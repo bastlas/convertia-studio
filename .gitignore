@@ -1,0 +1,17 @@
+# Sorties de compilation
+dist/
+build/win/*.zip
+build/win/*.7z
+.winbuild/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Données de travail
+*.aup3
+*.aup4
+*.aup3unsaved
+*.aup4unsaved
+.shots/
