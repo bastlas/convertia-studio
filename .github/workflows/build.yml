@@ -35,6 +35,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6"
 
+      - name: Tests unitaires
+        run: python -m unittest discover -s tests -t . -v
+
       - name: Téléchargement de ffmpeg et ffprobe
         shell: pwsh
         run: |
@@ -48,6 +51,13 @@ jobs:
         run: |
           python build/make_icon.py
           python -m PyInstaller --noconfirm --clean build/convertia_studio.spec
+
+      - name: Test de démarrage de l'exécutable
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist/ConvertiaStudio/ConvertiaStudio.exe" `
+               -ArgumentList "--cli", "--version" -Wait -PassThru -NoNewWindow
+          if ($p.ExitCode -ne 0) { throw "ConvertiaStudio.exe a échoué (code $($p.ExitCode))" }
 
       - name: Assemblage du dossier portable
         shell: pwsh
@@ -84,11 +94,15 @@ jobs:
           sudo apt-get update && sudo apt-get install -y ffmpeg libegl1 libgl1 libxkbcommon0 libxcb-cursor0
           python -m pip install --upgrade pip
           python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6"
+      - name: Tests unitaires
+        run: python -m unittest discover -s tests -t . -v
       - name: Compilation
         run: |
           mkdir -p bin && cp "$(command -v ffmpeg)" bin/ && cp "$(command -v ffprobe)" bin/
           python build/make_icon.py
           python -m PyInstaller --noconfirm --clean build/convertia_studio.spec
+          test -x dist/ConvertiaStudio/ConvertiaStudio
+          ./dist/ConvertiaStudio/ConvertiaStudio --cli --version
           mkdir -p dist/ConvertiaStudio/bin
           cp "$(command -v ffmpeg)" dist/ConvertiaStudio/bin/ffmpeg
           cp "$(command -v ffprobe)" dist/ConvertiaStudio/bin/ffprobe

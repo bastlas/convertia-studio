@@ -51,7 +51,7 @@ if not os.path.isfile(icon):
     icon = None
 
 a = Analysis(
-    ["convertia_studio.pyw"],
+    [os.path.join(ROOT, "convertia_studio.pyw")],
     pathex=[ROOT],
     binaries=binaries,
     datas=[],
