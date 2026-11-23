@@ -1,5 +1,17 @@
 # Journal des versions
 
+## 2.1.3 — 23 novembre 2026
+
+- Correctif Linux : les binaires ffmpeg / ffprobe de l'archive sont désormais
+  **statiques** (plus de dépendance aux bibliothèques de la distribution).
+- Un binaire embarqué qui ne démarre pas (bibliothèque manquante, binaire
+  cassé) est détecté et ignoré au profit du ffmpeg du `PATH` ; le test est
+  mis en cache.
+- Message d'erreur explicite quand ffmpeg / ffprobe est introuvable ou
+  inutilisable.
+- La CI Linux teste maintenant une conversion vidéo complète avec
+  l'exécutable et les binaires embarqués.
+
 ## 2.1.2 — 23 novembre 2026
 
 Section **Vidéo** complète, et nouveau sélecteur de taille pour l'image :

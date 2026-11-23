@@ -1,13 +1,10 @@
 """Localisation de ffmpeg / ffprobe et interrogation des fichiers médias.
 
-Les binaires sont cherchés, dans l'ordre :
-
-1. dans le dossier ``bin/`` du paquet (ffmpeg embarqué dans l'application) ;
-2. à côté de l'exécutable (version Windows « portable » avec ffmpeg.exe) ;
-3. dans le dossier temporaire de PyInstaller (``sys._MEIPASS``) ;
-4. dans le ``PATH``.
-
-Sous Windows, l'extension ``.exe`` est ajoutée automatiquement.
+Les binaires embarqués (``bin/`` à côté de l'exécutable) sont essayés en
+premier, puis ceux du ``PATH``.  Chaque candidat est réellement exécuté
+(``-version``, résultat mis en cache) : un binaire cassé — par exemple lié à
+des bibliothèques absentes de la distribution — est ignoré au profit du
+suivant.  Sous Windows, l'extension ``.exe`` est ajoutée automatiquement.
 """
 
 from __future__ import annotations
@@ -38,13 +35,41 @@ def _candidate_dirs():
     return [os.path.normpath(root) for root in roots]
 
 
+_working_cache = {}
+
+
+def _works(binary):
+    """Vrai si le binaire s'exécute réellement (bibliothèques présentes)."""
+    if binary in _working_cache:
+        return _working_cache[binary]
+    try:
+        completed = subprocess.run(
+            [binary, "-version"], stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, timeout=8)
+        result = completed.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        result = False
+    _working_cache[binary] = result
+    return result
+
+
 def _find(name):
     suffix = ".exe" if os.name == "nt" else ""
-    for directory in _candidate_dirs():
-        candidate = os.path.join(directory, name + suffix)
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+    candidates = [os.path.join(directory, name + suffix)
+                  for directory in _candidate_dirs()]
+    in_path = shutil.which(name)
+    if in_path:
+        candidates.append(in_path)
+
+    seen = set()
+    for candidate in candidates:
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK) \
+                and _works(candidate):
             return candidate
-    return shutil.which(name)
+    return None
 
 
 def ffmpeg():
@@ -61,9 +86,9 @@ def require_ffmpeg():
     binary = ffmpeg()
     if binary is None:
         raise FFmpegMissingError(
-            "ffmpeg est introuvable : il est nécessaire pour encoder dans ce "
-            "format. Installe-le (paquet ffmpeg) ou place ffmpeg à côté du "
-            "programme.")
+            "ffmpeg est introuvable ou inutilisable : il est nécessaire pour "
+            "encoder dans ce format. Installe-le (paquet ffmpeg) ou place un "
+            "binaire valide à côté du programme.")
     return binary
 
 

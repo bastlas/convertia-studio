@@ -44,8 +44,10 @@ Ce qui est nécessaire :
 - Python 3.10+ et `numpy` ;
 - `PySide6` pour l'interface graphique ;
 - `Pillow` pour le traitement d'images ;
-- `ffmpeg` pour les formats audio compressés (MP3, MP4, Opus…). Sous Windows,
-  `ffmpeg.exe` est livré dans `bin/` à côté de l'exécutable.
+- `ffmpeg` pour les formats audio compressés (MP3, MP4, Opus…), les vidéos et
+  l'analyse des médias. Sous Windows et dans l'archive Linux, des binaires
+  autonomes sont livrés dans `bin/` à côté de l'exécutable ; à défaut, le
+  `ffmpeg` du `PATH` est utilisé.
 
 ## Formats
 
@@ -311,7 +313,7 @@ WAV/AIFF et la conversion complète.
 
 | Message | Cause / solution |
 | --- | --- |
-| « ffmpeg introuvable » | installer ffmpeg, ou le placer dans `bin/` à côté de l'application |
+| « ffmpeg introuvable ou inutilisable » | installer ffmpeg (paquet `ffmpeg`), ou placer un binaire valide dans `bin/` ; un binaire embarqué cassé est ignoré automatiquement |
 | « journal WAL détecté » | le projet est ouvert dans Audacity ; enregistrer puis fermer pour un instantané stable |
 | « document principal vide : lecture de la sauvegarde automatique » | projet jamais enregistré (`.aup4unsaved`) |
 | « bloc audio absent de la base » | projet incomplet ou corrompu : le passage devient silencieux |

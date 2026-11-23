@@ -173,8 +173,9 @@ def _rotation_of(stream):
 def _probe_command():
     binary = ffmpeg_tools.ffprobe()
     if binary is None:
-        raise VideoError("ffprobe est introuvable : il est nécessaire pour "
-                         "analyser les vidéos.")
+        raise VideoError("ffprobe est introuvable ou inutilisable : installe "
+                         "ffmpeg (paquet ffmpeg) ou place un binaire valide "
+                         "dans bin/.")
     return binary
 
 

@@ -131,7 +131,6 @@ jobs:
           python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6" "Pillow>=11"
       - name: Compilation
         run: |
-          mkdir -p bin && cp "$(command -v ffmpeg)" bin/ && cp "$(command -v ffprobe)" bin/
           python build/make_icon.py
           python -m PyInstaller --noconfirm --clean build/convertia_studio.spec
           test -x dist/ConvertiaStudio/ConvertiaStudio
@@ -139,9 +138,31 @@ jobs:
           python3 -c "from PIL import Image; Image.new('RGB', (120, 80), (30, 120, 220)).save('smoke.png')"
           ./dist/ConvertiaStudio/ConvertiaStudio --cli smoke.png -f webp -Q 70 -o smoke.webp --force
           test -s smoke.webp
-          mkdir -p dist/ConvertiaStudio/bin
-          cp "$(command -v ffmpeg)" dist/ConvertiaStudio/bin/ffmpeg
-          cp "$(command -v ffprobe)" dist/ConvertiaStudio/bin/ffprobe
+
+      - name: ffmpeg statique embarqué
+        run: |
+          if curl -fsSL -o ffmpeg-static.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz; then
+            mkdir -p ffmpeg-static
+            tar xf ffmpeg-static.tar.xz -C ffmpeg-static --strip-components=1
+            mkdir -p dist/ConvertiaStudio/bin
+            cp ffmpeg-static/ffmpeg ffmpeg-static/ffprobe dist/ConvertiaStudio/bin/
+            dist/ConvertiaStudio/bin/ffprobe -version | head -1
+          else
+            echo "::warning::archive ffmpeg statique indisponible ; ffmpeg système requis"
+          fi
+
+      - name: Test de conversion vidéo
+        run: |
+          ffmpeg -hide_banner -loglevel error -y \
+            -f lavfi -i "testsrc=size=320x240:rate=25:duration=1" \
+            -f lavfi -i "sine=frequency=440:duration=1" \
+            -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -shortest /tmp/smoke.mp4
+          ./dist/ConvertiaStudio/ConvertiaStudio --cli --video /tmp/smoke.mp4 \
+            -f webm --resize 240x180 -o /tmp/smoke-video.webm --force
+          test -s /tmp/smoke-video.webm
+
+      - name: Documentation et archive
+        run: |
           cp README.md dist/ConvertiaStudio/LISEZ-MOI.md
           cp -r docs dist/ConvertiaStudio/docs
           tar czf ConvertiaStudio-linux.tar.gz -C dist ConvertiaStudio
