@@ -14,11 +14,25 @@ formats de sortie — sans lancer Audacity.
 <sub>Les sections Image et Vidéo sont déjà visibles dans la navigation, avec leur
 périmètre à définir : [aperçu](docs/apercu-image.png) · [aperçu](docs/apercu-video.png).</sub>
 
+## Télécharger (Windows)
+
+Les versions prêtes à l'emploi sont publiées dans les
+[**Releases GitHub**](../../releases/latest) :
+
+1. télécharger `ConvertiaStudio-win64.zip` ;
+2. décompresser l'archive où tu veux (le dossier `ConvertiaStudio/`) ;
+3. double-cliquer sur `ConvertiaStudio.exe`.
+
+Rien à installer : Python, Qt, ffmpeg et ffprobe sont inclus dans l'archive.
+Windows peut afficher un avertissement SmartScreen, l'exécutable n'étant pas
+signé : *Informations complémentaires* → *Exécuter quand même*. Les empreintes
+SHA-256 sont fournies dans `SHA256SUMS.txt` à côté de l'archive.
+
 ## Démarrage rapide
 
 | Plateforme | Lancement |
 | --- | --- |
-| Windows | `ConvertiaStudio.exe` (dossier `dist/ConvertiaStudio-win64/`) |
+| Windows | `ConvertiaStudio.exe` (archive `ConvertiaStudio-win64.zip` des Releases) |
 | Linux / macOS | `python3 convertia_studio.pyw` |
 | Ligne de commande | `python3 -m convertia_studio --help` |
 
@@ -134,27 +148,24 @@ La navigation et la structure sont prêtes pour de nouvelles sections :
 3. placer la logique métier dans un module dédié (`convertia_studio/video/`,
    `convertia_studio/image/`) et l'exposer via `jobs.py`, comme pour l'audio.
 
-## Publier sur GitHub
+## Publier une version
 
-Le dépôt local est prêt (branche `main`, premier commit effectué). Il ne reste
-qu'à créer le dépôt distant, ce qui demande tes identifiants GitHub :
+Le dépôt distant et la CI sont déjà en place. Pour publier une nouvelle
+version téléchargeable (Release GitHub avec l'exécutable Windows) :
 
 ```bash
-# avec GitHub CLI
-gh auth login
-./scripts/publish_github.sh
-
-# ou avec un jeton personnel (portée « repo »)
-GITHUB_TOKEN=ghp_xxx ./scripts/publish_github.sh
-
-# ou, si le dépôt est déjà créé sur github.com
-git remote add origin git@github.com:<compte>/convertia-studio.git
-git push -u origin main
+# 1. mettre à jour __version__ dans convertia_studio/__init__.py et CHANGELOG.md
+# 2. committer, puis étiqueter et pousser (le tag déclenche la compilation)
+git add -A && git commit -m "Convertia Studio 2.0.1"
+./scripts/release.sh v2.0.1
 ```
 
-Le workflow `.github/workflows/build.yml` compile automatiquement les versions
-Windows et Linux à chaque étiquette `v*` (et à la demande depuis l'onglet
-« Actions »).
+`scripts/release.sh` vérifie que l'arbre est propre et que l'étiquette
+correspond à `__version__`, puis pousse le tag. Le workflow
+`.github/workflows/build.yml` compile alors sous Windows et Linux, assemble
+`ConvertiaStudio-win64.zip`, calcule les empreintes SHA-256 et crée la Release.
+La compilation peut aussi être lancée à la main depuis l'onglet « Actions »,
+sans publication (les archives restent des artefacts).
 
 ## Compiler
 
@@ -168,7 +179,7 @@ build\build_windows.bat
 # Windows, depuis Linux via Wine (ce qui a produit dist/ConvertiaStudio-win64/)
 ./build/win/build_exe_wine.sh
 
-# GitHub Actions (Windows + Linux) : .github/workflows/build.yml
+# GitHub Actions (Windows + Linux + Release) : .github/workflows/build.yml
 ```
 
 ## Tests

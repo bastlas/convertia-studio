@@ -1,5 +1,14 @@
-# Compilation automatique : produit ConvertiaStudio (Windows) et
-# ConvertiaStudio-linux.tar.gz (Ubuntu) à chaque étiquette « v* ».
+# Compilation et publication de Convertia Studio.
+#
+# Déclencheurs :
+#   - étiquette « v* »  → compilation Windows + Linux, puis Release GitHub avec
+#     les archives téléchargeables et leurs empreintes SHA-256 ;
+#   - manuel (Actions → build → Run workflow) → compilation seule, archives
+#     conservées 14 jours, aucune Release.
+#
+# Windows : ConvertiaStudio-win64.zip contient le dossier ConvertiaStudio/
+# (ConvertiaStudio.exe, Qt, Python, ffmpeg et ffprobe embarqués).
+# Linux   : ConvertiaStudio-linux.tar.gz contient le même dossier pour Linux.
 name: build
 
 on:
@@ -7,35 +16,63 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   windows:
+    name: Windows (ConvertiaStudio.exe)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Dépendances
+
+      - name: Dépendances Python
         run: |
           python -m pip install --upgrade pip
           python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6"
-      - name: ffmpeg
+
+      - name: Téléchargement de ffmpeg et ffprobe
+        shell: pwsh
         run: |
-          curl -L -o ffmpeg.zip https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
+          curl.exe -L --fail -o ffmpeg.zip https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg
           New-Item -ItemType Directory -Force bin | Out-Null
-          Get-ChildItem -Recurse -Filter ffmpeg.exe ffmpeg | Copy-Item -Destination bin
-          Get-ChildItem -Recurse -Filter ffprobe.exe ffmpeg | Copy-Item -Destination bin
-      - name: Build
+          Copy-Item (Get-ChildItem -Recurse -Filter ffmpeg.exe ffmpeg | Select-Object -First 1).FullName bin\
+          Copy-Item (Get-ChildItem -Recurse -Filter ffprobe.exe ffmpeg | Select-Object -First 1).FullName bin\
+
+      - name: Compilation PyInstaller
         run: |
           python build/make_icon.py
           python -m PyInstaller --noconfirm --clean build/convertia_studio.spec
+
+      - name: Assemblage du dossier portable
+        shell: pwsh
+        run: |
+          $app = "dist/ConvertiaStudio"
+          New-Item -ItemType Directory -Force "$app/bin" | Out-Null
+          Copy-Item bin/ffmpeg.exe, bin/ffprobe.exe "$app/bin/"
+          Copy-Item README.md "$app/LISEZ-MOI.md"
+          Copy-Item docs "$app/docs" -Recurse
+          Get-ChildItem "$app/bin" | Format-Table Name, Length
+
+      - name: Archive ZIP
+        shell: pwsh
+        run: |
+          if (Test-Path ConvertiaStudio-win64.zip) { Remove-Item ConvertiaStudio-win64.zip }
+          Compress-Archive -Path dist/ConvertiaStudio -DestinationPath ConvertiaStudio-win64.zip -CompressionLevel Optimal
+
       - uses: actions/upload-artifact@v4
         with:
           name: ConvertiaStudio-win64
-          path: dist/ConvertiaStudio
+          path: ConvertiaStudio-win64.zip
+          if-no-files-found: error
 
   linux:
+    name: Linux (ConvertiaStudio-linux.tar.gz)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,13 +84,75 @@ jobs:
           sudo apt-get update && sudo apt-get install -y ffmpeg libegl1 libxkbcommon0
           python -m pip install --upgrade pip
           python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6"
-      - name: Build
+      - name: Compilation
         run: |
           mkdir -p bin && cp "$(command -v ffmpeg)" bin/ && cp "$(command -v ffprobe)" bin/
           python build/make_icon.py
           python -m PyInstaller --noconfirm --clean build/convertia_studio.spec
+          mkdir -p dist/ConvertiaStudio/bin
+          cp "$(command -v ffmpeg)" dist/ConvertiaStudio/bin/ffmpeg
+          cp "$(command -v ffprobe)" dist/ConvertiaStudio/bin/ffprobe
+          cp README.md dist/ConvertiaStudio/LISEZ-MOI.md
+          cp -r docs dist/ConvertiaStudio/docs
           tar czf ConvertiaStudio-linux.tar.gz -C dist ConvertiaStudio
       - uses: actions/upload-artifact@v4
         with:
           name: ConvertiaStudio-linux
           path: ConvertiaStudio-linux.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Publication GitHub
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier que l'étiquette correspond à la version
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, re
+          source = pathlib.Path("convertia_studio/__init__.py").read_text(encoding="utf-8")
+          version = re.search(r'__version__\s*=\s*"([^"]+)"', source).group(1)
+          tag = os.environ["GITHUB_REF_NAME"]
+          if tag != "v" + version:
+              raise SystemExit(f"étiquette {tag} != version v{version}")
+          print(f"version vérifiée : {version}")
+          PY
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Empreintes SHA-256
+        working-directory: release
+        run: |
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Convertia Studio ${{ github.ref_name }}
+          files: release/*
+          body: |
+            ## Convertia Studio ${{ github.ref_name }} — Windows et Linux
+
+            **Windows (le plus simple)**
+            1. télécharger `ConvertiaStudio-win64.zip` ;
+            2. décompresser l'archive où tu veux ;
+            3. double-cliquer sur `ConvertiaStudio.exe`.
+
+            Aucune installation : Python, Qt, ffmpeg et ffprobe sont inclus.
+            Windows peut afficher un avertissement SmartScreen (éditeur non
+            signé) : *Informations complémentaires* → *Exécuter quand même*.
+
+            **Ligne de commande (Windows)**
+
+            ```bat
+            ConvertiaStudio.exe --cli "C:\projets\mon projet.aup4" -f mp3 -b 320k
+            ```
+
+            Vérifier l'intégrité du téléchargement avec `SHA256SUMS.txt`.
+            Détails et formats : voir le [README](https://github.com/${{ github.repository }}#readme).
