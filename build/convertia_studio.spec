@@ -42,6 +42,10 @@ excludes = [
 hiddenimports = [
     "convertia_studio.gui.pages.audio_page",
     "convertia_studio.gui.pages.coming_soon",
+    "convertia_studio.gui.pages.image_page",
+    "convertia_studio.gui.crop_dialog",
+    "convertia_studio.image.engine",
+    "convertia_studio.image.formats",
 ]
 
 icon = os.path.join(ROOT, "build", "convertia_studio.ico")

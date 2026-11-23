@@ -624,7 +624,10 @@ class DropZone(QFrame):
     clicked = Signal()
     fileDropped = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, glyph="waveform",
+                 title="Déposez un fichier ici",
+                 subtitle="projet Audacity (.aup3 / .aup4) ou fichier audio — "
+                          "ou cliquez pour parcourir"):
         super().__init__(parent)
         self.setAcceptDrops(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -640,12 +643,11 @@ class DropZone(QFrame):
         layout.setSpacing(6)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.icon = GlyphWidget("waveform", theme.COLORS["cyan"], 34)
-        self.title = QLabel("Déposez un fichier ici")
+        self.icon = GlyphWidget(glyph, theme.COLORS["cyan"], 34)
+        self.title = QLabel(title)
         self.title.setFont(theme.ui_font(15, QFont.Weight.DemiBold))
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.subtitle = QLabel("projet Audacity (.aup3 / .aup4) ou fichier audio — "
-                               "ou cliquez pour parcourir")
+        self.subtitle = QLabel(subtitle)
         self.subtitle.setObjectName("Faint")
         self.subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.subtitle.setWordWrap(True)

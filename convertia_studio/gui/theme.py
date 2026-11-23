@@ -35,6 +35,7 @@ ACCENT_END = QColor(COLORS["violet"])
 FAMILY_COLORS = {
     "lossy": COLORS["cyan"],
     "lossless": COLORS["green"],
+    "raw": COLORS["amber"],
     "pcm": COLORS["violet"],
 }
 
@@ -215,6 +216,50 @@ QComboBox QAbstractItemView {
     outline: none;
     selection-background-color: #16233A;
     selection-color: %(text)s;
+}
+
+/* ---- champs numériques et curseurs ---- */
+QSpinBox, QDoubleSpinBox {
+    background: %(bg_alt)s;
+    border: 1px solid %(line)s;
+    border-radius: 9px;
+    padding: 6px 8px;
+    min-width: 62px;
+    selection-background-color: %(cyan)s;
+    selection-color: #04070E;
+}
+QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid %(cyan)s;
+}
+QSpinBox:disabled, QDoubleSpinBox:disabled {
+    color: %(text_faint)s;
+    background: #0A101C;
+}
+
+QSlider::groove:horizontal {
+    height: 4px;
+    background: #1B2740;
+    border-radius: 2px;
+}
+QSlider::sub-page:horizontal {
+    background: #22D3EE;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    background: %(text)s;
+    width: 14px;
+    margin: -6px 0;
+    border-radius: 7px;
+}
+QSlider::handle:horizontal:hover {
+    background: #FFFFFF;
+}
+QSlider::handle:horizontal:disabled {
+    background: #2A3A58;
+}
+
+QDialog {
+    background: %(bg)s;
 }
 
 QCheckBox {

@@ -1,18 +1,20 @@
 # Convertia Studio
 
 Application de conversion de médias, avec interface graphique moderne et ligne
-de commande. Elle convertit les **projets Audacity** (`.aup3`, `.aup4`, y
-compris les fichiers `*unsaved`) et **n'importe quel fichier audio** vers neuf
-formats de sortie — sans lancer Audacity.
+de commande. Côté **audio**, elle convertit les **projets Audacity** (`.aup3`,
+`.aup4`, y compris les fichiers `*unsaved`) et **n'importe quel fichier audio**
+vers neuf formats de sortie — sans lancer Audacity. Côté **image**, elle
+recadre, redimensionne, pivote et compresse les images (PNG, JPEG, WebP, AVIF,
+TIFF, BMP) avec aperçu et comparaison du poids avant / après.
 
-> **Sections à venir** : une partie « Image » et une partie « Vidéo » sont déjà
-> présentes dans la navigation et attendent leur contenu (voir
+> **Section à venir** : la partie « Vidéo » est déjà présente dans la
+> navigation et attend son contenu (voir
 > [Étendre l'application](#étendre-lapplication)).
 
 ![Aperçu de la page Audio](docs/apercu-audio.png)
 
-<sub>Les sections Image et Vidéo sont déjà visibles dans la navigation, avec leur
-périmètre à définir : [aperçu](docs/apercu-image.png) · [aperçu](docs/apercu-video.png).</sub>
+<sub>La section Image est disponible : [aperçu](docs/apercu-image.png) · la
+section Vidéo reste à définir : [aperçu](docs/apercu-video.png).</sub>
 
 ## Télécharger (Windows)
 
@@ -23,7 +25,8 @@ Les versions prêtes à l'emploi sont publiées dans les
 2. décompresser l'archive où tu veux (le dossier `ConvertiaStudio/`) ;
 3. double-cliquer sur `ConvertiaStudio.exe`.
 
-Rien à installer : Python, Qt, ffmpeg et ffprobe sont inclus dans l'archive.
+Rien à installer : Python, Qt, Pillow, ffmpeg et ffprobe sont inclus dans
+l'archive.
 Windows peut afficher un avertissement SmartScreen, l'exécutable n'étant pas
 signé : *Informations complémentaires* → *Exécuter quand même*. Les empreintes
 SHA-256 sont fournies dans `SHA256SUMS.txt` à côté de l'archive.
@@ -40,10 +43,13 @@ Ce qui est nécessaire :
 
 - Python 3.10+ et `numpy` ;
 - `PySide6` pour l'interface graphique ;
-- `ffmpeg` pour les formats compressés (MP3, MP4, Opus…). Sous Windows,
+- `Pillow` pour le traitement d'images ;
+- `ffmpeg` pour les formats audio compressés (MP3, MP4, Opus…). Sous Windows,
   `ffmpeg.exe` est livré dans `bin/` à côté de l'exécutable.
 
 ## Formats
+
+### Audio
 
 **En entrée** : projets Audacity `.aup3` / `.aup4` (et `*unsaved`), ou tout
 fichier audio ou vidéo contenant de l'audio (WAV, MP3, M4A, FLAC, OGG, Opus,
@@ -66,6 +72,27 @@ AIFF, WMA, MP4, MKV, WebM…).
 Tous les formats acceptent une fréquence de sortie imposée (44,1 / 48 / 96 kHz)
 et un mixage mono.
 
+### Image
+
+**En entrée** : PNG, JPEG, WebP, AVIF, TIFF, BMP, GIF, ICO (et la plupart des
+formats lus par Pillow). L'orientation EXIF est appliquée à l'ouverture ; seule
+la première image d'un GIF ou d'un WebP animé est conservée.
+
+| Format | Extension | Type | Réglages |
+| --- | --- | --- | --- |
+| JPEG | `.jpg` | compressé | qualité 1 → 100 |
+| WebP | `.webp` | compressé | qualité, transparence |
+| AVIF | `.avif` | compressé | qualité (encodage plus lent) |
+| PNG | `.png` | sans perte | transparence, optimisation |
+| TIFF | `.tiff` | sans perte | compression deflate |
+| BMP | `.bmp` | brut | — |
+
+Transformations disponibles, appliquées dans cet ordre : **recadrage**
+(sélection à la souris), **rotation** (90° / 180°), **miroir** et
+**redimensionnement** (avec conservation des proportions). La page affiche un
+aperçu du résultat, le poids estimé et l'écart avant / après ; la transparence
+est aplatie sur fond blanc pour les formats qui ne la gèrent pas.
+
 ## Ligne de commande
 
 ```bash
@@ -78,21 +105,29 @@ python3 -m convertia_studio projet.aup4 -f mp3 -b 320k -o podcast.mp3 --force
 # n'importe quel fichier audio → Opus mono 64 kb/s
 python3 -m convertia_studio interview.wav -f opus -b 64k --mono
 
+# image → WebP 70 %, recadrée, tournée et réduite
+python3 -m convertia_studio photo.png -f webp -Q 70 \
+    --crop 100,50,1200,800 --rotate 90 --resize 800x600 -o photo.webp
+
 # analyser une source sans convertir
 python3 -m convertia_studio "mon projet.aup4" --info
 
 # lister les formats disponibles
 python3 -m convertia_studio --list-formats
+python3 -m convertia_studio --list-image-formats
 ```
 
-Options : `-o/--output`, `-f/--format`, `-b/--bitrate`, `--depth`, `--sample-rate`,
-`--mono`, `--info`, `--list-formats`, `-q/--quiet`, `--force`, `--version`.
+Options audio : `-b/--bitrate`, `--depth`, `--sample-rate`, `--mono`.
+Options image : `-Q/--quality`, `--resize`, `--crop`, `--rotate`, `--flip-h`,
+`--flip-v`. Options communes : `-o/--output`, `-f/--format`, `--info`,
+`--list-formats`, `--list-image-formats`, `-q/--quiet`, `--force`, `--version`.
 
 Depuis l'exécutable Windows (compilé sans console), la ligne de commande reste
 accessible en préfixant par `--cli` :
 
 ```bat
 ConvertiaStudio.exe --cli "C:\projets\mon projet.aup4" -f flac --force
+ConvertiaStudio.exe --cli "C:\photos\portrait.jpg" -f webp -Q 75 --resize 50%%
 ```
 
 ## Ce que le mixage restitue
@@ -111,7 +146,19 @@ Pour un projet Audacity, l'outil reproduit ce que contient le fichier :
 - lecture du journal WAL quand le projet est (ou a été) ouvert dans Audacity :
   le projet est copié dans un dossier temporaire pour lire un état cohérent.
 
-## Ce qui n'est pas restitué
+## Traitement des images
+
+- transformations appliquées dans cet ordre : recadrage, rotation, miroir,
+  redimensionnement (rééchantillonnage Lanczos) ;
+- orientation EXIF appliquée à l'ouverture, puis retirée du fichier produit ;
+- profil ICC conservé pour JPEG, PNG, WebP et AVIF ;
+- transparence conservée (PNG, WebP, AVIF, TIFF) ou aplatie sur fond blanc
+  (JPEG, BMP) ;
+- les métadonnées EXIF (appareil, date…) ne sont pas recopiées ;
+- GIF et WebP animés : seule la première image est convertie ;
+- images de plus de 8 bits par canal ramenées à 8 bits.
+
+## Ce qui n'est pas restitué (audio)
 
 - **Effets temps réel** d'Audacity : ils ne sont pas stockés dans le projet
   (seul l'audio d'origine l'est). Pour les inclure : `Fichier → Exporter` dans
@@ -127,10 +174,12 @@ Pour un projet Audacity, l'outil reproduit ce que contient le fichier :
 | --- | --- |
 | `convertia_studio/audio/project.py` | décodeur des projets Audacity + mixage |
 | `convertia_studio/audio/formats.py` | registre des formats, encodage, écriture WAV/AIFF |
-| `convertia_studio/jobs.py` | analyse d'une source et orchestration de la conversion |
+| `convertia_studio/image/engine.py` | transformations et encodage des images (Pillow) |
+| `convertia_studio/image/formats.py` | registre des formats d'image |
+| `convertia_studio/jobs.py` | analyse d'une source audio et orchestration de la conversion |
 | `convertia_studio/ffmpeg_tools.py` | localisation de ffmpeg / ffprobe, analyse des médias |
 | `convertia_studio/cli.py` | ligne de commande |
-| `convertia_studio/gui/` | interface PySide6 (`app`, `window`, `widgets`, `theme`, `pages/`) |
+| `convertia_studio/gui/` | interface PySide6 (`app`, `window`, `widgets`, `theme`, `pages/`, `crop_dialog.py`) |
 | `convertia_studio.pyw` | lanceur (fenêtre, ou `--cli` pour la console) |
 | `tests/` | tests unitaires + générateur de projets Audacity de test |
 | `build/` | recettes PyInstaller, icône, scripts de compilation |
@@ -142,11 +191,13 @@ Pour un projet Audacity, l'outil reproduit ce que contient le fichier :
 
 La navigation et la structure sont prêtes pour de nouvelles sections :
 
+La section Image sert d'exemple complet.
+
 1. créer une page dans `convertia_studio/gui/pages/` (voir `coming_soon.py`) ;
 2. ajouter l'entrée dans `Sidebar.ENTRIES` et le `QStackedWidget` de
    `MainWindow` ;
-3. placer la logique métier dans un module dédié (`convertia_studio/video/`,
-   `convertia_studio/image/`) et l'exposer via `jobs.py`, comme pour l'audio.
+3. placer la logique métier dans un module dédié (`convertia_studio/video/`)
+   et l'exposer comme `image/engine.py` le fait pour les images.
 
 ## Publier une version
 
@@ -206,6 +257,8 @@ WAV/AIFF et la conversion complète.
 ## Licences
 
 - Le code de Convertia Studio : licence MIT (voir `LICENSE`).
+- `Pillow` (traitement d'images) : licence MIT-CMU ; le support AVIF dépend de
+  libavif (licence BSD).
 - `ffmpeg` embarqué dans la distribution Windows : binaires fournis par
   [gyan.dev](https://www.gyan.dev/ffmpeg/builds/), sous licence LGPL/GPL selon
   les codecs activés. Redistribuer l'exécutable implique de conserver la

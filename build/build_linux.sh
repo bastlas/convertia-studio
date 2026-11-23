@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
-python3 -m pip install --quiet --upgrade "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6"
+python3 -m pip install --quiet --upgrade "pyinstaller>=6.10" "numpy>=1.26" \
+    "PySide6>=6.6" "Pillow>=11"
 mkdir -p bin
 command -v ffmpeg >/dev/null && cp "$(command -v ffmpeg)" bin/ || true
 command -v ffprobe >/dev/null && cp "$(command -v ffprobe)" bin/ || true

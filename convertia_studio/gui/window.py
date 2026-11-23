@@ -10,9 +10,11 @@ from PySide6.QtWidgets import (QButtonGroup, QFrame, QGraphicsOpacityEffect, QHB
                                QLabel, QMainWindow, QStackedWidget, QVBoxLayout, QWidget)
 
 from .. import APP_NAME, APP_TAGLINE, __version__, ffmpeg_tools
+from ..image import engine as image_engine
 from . import theme, widgets
 from .pages.audio_page import AudioPage
 from .pages.coming_soon import ComingSoonPage
+from .pages.image_page import ImagePage
 
 
 class BrandMark(QWidget):
@@ -160,17 +162,7 @@ class MainWindow(QMainWindow):
 
         self.pages = QStackedWidget()
         self.audio_page = AudioPage()
-        self.image_page = ComingSoonPage(
-            "Image",
-            "Convertir, redimensionner et optimiser vos images — section à venir.",
-            "image", theme.COLORS["violet"],
-            (("Formats", "PNG, JPEG, WebP, AVIF, TIFF et BMP, en entrée comme en "
-                         "sortie."),
-             ("Traitement", "Redimensionnement, recadrage, rotation et compression "
-                            "avec aperçu."),
-             ("Lot", "Traiter un dossier entier et comparer le poids avant / après.")),
-            "Cette partie n'existe pas encore : nous définirons son périmètre "
-            "ensemble quand tu voudras l'attaquer.")
+        self.image_page = ImagePage()
         self.video_page = ComingSoonPage(
             "Vidéo",
             "Convertir, découper et extraire l'audio de vos vidéos — section à venir.",
@@ -190,15 +182,15 @@ class MainWindow(QMainWindow):
 
         self.sidebar.pageSelected.connect(self._switch_page)
         self.audio_page.statusMessage.connect(self.footer_status.setText)
+        self.image_page.statusMessage.connect(self.footer_status.setText)
 
         self.setAcceptDrops(True)
-        QShortcut(QKeySequence.StandardKey.Open, self,
-                  activated=self.audio_page._browse)
+        QShortcut(QKeySequence.StandardKey.Open, self, activated=self.open_file)
         QShortcut(QKeySequence("Ctrl+Return"), self,
-                  activated=self.audio_page.start_conversion)
+                  activated=self.trigger_conversion)
 
         if initial_path and os.path.isfile(initial_path):
-            self.audio_page.load_source(initial_path)
+            self._route_file(initial_path)
 
     def _build_footer(self):
         footer = QFrame()
@@ -227,11 +219,33 @@ class MainWindow(QMainWindow):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if path:
-                self.sidebar.select(0)
-                self.pages.setCurrentIndex(0)
-                self.audio_page.load_source(path)
+                self._route_file(path)
                 break
         event.acceptProposedAction()
+
+    # -- routage des fichiers -------------------------------------------
+    def _route_file(self, path):
+        """Ouvre le fichier sur la page correspondant à son type."""
+        if image_engine.is_image(path):
+            self.sidebar.select(1)
+            self.image_page.load_source(path)
+        else:
+            self.sidebar.select(0)
+            self.audio_page.load_source(path)
+
+    def open_file(self):
+        widget = self.pages.currentWidget()
+        if widget is self.image_page:
+            self.image_page.browse()
+        else:
+            self.audio_page._browse()
+
+    def trigger_conversion(self):
+        widget = self.pages.currentWidget()
+        if widget is self.image_page:
+            self.image_page.start_conversion()
+        else:
+            self.audio_page.start_conversion()
 
     def _switch_page(self, index):
         widget = self.pages.widget(index)

@@ -60,7 +60,7 @@ log "mise à jour de pip…"
 wine "${PY}" -m pip install --disable-pip-version-check -q --upgrade pip
 log "installation de PyInstaller, numpy et PySide6 (long)…"
 wine "${PY}" -m pip install --disable-pip-version-check -q \
-    "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6"
+    "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6" "Pillow>=11"
 wine "${PY}" -m PyInstaller --version
 
 # ------------------------------------------------------ 4. sources + spec

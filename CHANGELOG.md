@@ -1,5 +1,23 @@
 # Journal des versions
 
+## 2.1.0 — 23 novembre 2026
+
+Section **Image** complète :
+
+- recadrage interactif à la souris, avec proportions prédéfinies (1:1, 4:3,
+  3:2, 16:9, 9:16, originale) ;
+- redimensionnement en pixels avec conservation des proportions ;
+- rotation 90 / 180 / 270° et miroir horizontal ou vertical ;
+- compression JPEG, WebP et AVIF avec curseur de qualité ;
+- sorties PNG, TIFF et BMP sans perte, transparence conservée ou aplatie sur
+  fond blanc selon le format ;
+- aperçu du résultat, bascule avant / après, dimensions et poids estimé en
+  direct, comparaison du poids avant / après avec écart en pourcentage ;
+- ligne de commande étendue : `-Q/--quality`, `--resize`, `--crop`,
+  `--rotate`, `--flip-h`, `--flip-v`, `--list-image-formats` ;
+- glisser-déposer routé automatiquement vers la page Audio ou Image ;
+- Pillow embarqué dans les distributions Windows et Linux.
+
 ## 2.0.0 — 21 novembre 2026
 
 Réécriture complète sous le nom **Convertia Studio**.
