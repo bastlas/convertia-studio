@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDoubleSpinBo
                                QLabel, QLineEdit, QSizePolicy, QSlider,
                                QStackedWidget, QVBoxLayout, QWidget)
 
+from ... import batch
 from ...image import engine as image_engine
 from ...video import engine, formats
 from .. import theme, widgets
@@ -108,6 +109,7 @@ class VideoPage(QWidget):
     """Page principale : préparer et convertir une vidéo."""
 
     statusMessage = Signal(str)
+    folderDropped = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -175,6 +177,7 @@ class VideoPage(QWidget):
             subtitle="MP4, MKV, WebM, MOV, AVI… — ou cliquez pour parcourir")
         self.drop_zone.clicked.connect(self.browse)
         self.drop_zone.fileDropped.connect(self.load_source)
+        self.drop_zone.folderDropped.connect(self.folderDropped.emit)
         self.source_card = VideoSourceCard()
         self.source_card.changeRequested.connect(self.browse)
         self.source_stack.addWidget(self.drop_zone)
@@ -481,6 +484,24 @@ class VideoPage(QWidget):
         if mode == "preset":
             return self.size_combo.currentData()
         return (int(self.width_spin.value()), int(self.height_spin.value()))
+
+    def batch_template(self):
+        """Encodage actuel, sans découpe ni redimensionnement de l'aperçu."""
+        data = self.audio_combo.currentData()
+        audio_mode, audio_bitrate = data or ("auto", None)
+        video_format = formats.get_format(self._format_key)
+        settings = engine.VideoSettings(
+            crf=self.crf_slider.value(),
+            speed=self.speed_combo.currentData() or "balanced",
+            audio_mode=audio_mode, audio_bitrate=audio_bitrate)
+        audio_label = self.audio_combo.currentText()
+        if not audio_label:
+            codec = "Opus" if video_format.audio_codec == "libopus" else "AAC"
+            audio_label = "%s %s kb/s" % (
+                codec, str(video_format.default_audio_bitrate).rstrip("k"))
+        summary = "Page Vidéo · CRF %d · %s · %s" % (
+            settings.crf, self.speed_combo.currentText(), audio_label)
+        return batch.BatchTemplate("video", self._format_key, summary, settings)
 
     def _settings(self):
         width, height = self._frame_size()
@@ -1000,6 +1021,9 @@ class VideoPage(QWidget):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if path:
-                self.load_source(path)
+                if os.path.isdir(path):
+                    self.folderDropped.emit(path)
+                else:
+                    self.load_source(path)
                 break
         event.acceptProposedAction()

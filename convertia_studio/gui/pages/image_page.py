@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFileDialog,
                                QLineEdit, QSizePolicy, QSlider, QSpinBox,
                                QStackedWidget, QVBoxLayout, QWidget)
 
+from ... import batch
 from ...image import engine, formats
 from .. import theme, widgets
 from ..crop_dialog import CropDialog, load_preview_pixmap
@@ -109,6 +110,7 @@ class ImagePage(QWidget):
     """Page principale : préparer et convertir une image."""
 
     statusMessage = Signal(str)
+    folderDropped = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -189,6 +191,7 @@ class ImagePage(QWidget):
                      "parcourir")
         self.drop_zone.clicked.connect(self.browse)
         self.drop_zone.fileDropped.connect(self.load_source)
+        self.drop_zone.folderDropped.connect(self.folderDropped.emit)
         self.source_card = ImageSourceCard()
         self.source_card.changeRequested.connect(self.browse)
         self.source_stack.addWidget(self.drop_zone)
@@ -420,6 +423,16 @@ class ImagePage(QWidget):
         return row
 
     # -- état -----------------------------------------------------------
+    def batch_template(self):
+        """Format et qualité actuels, sans recadrage ni taille de l'aperçu."""
+        image_format = formats.get_format(self._format_key)
+        quality = self.quality_slider.value()
+        summary = ("Qualité %d" % quality if image_format.supports_quality
+                   else "Sans perte")
+        settings = engine.ImageSettings(quality=quality)
+        return batch.BatchTemplate("image", self._format_key,
+                                   "Page Image · " + summary, settings)
+
     def _settings(self):
         flip_h, flip_v = MIRRORS[self.mirror_combo.currentIndex()][1]
         width, height = self._target_size()
@@ -947,6 +960,9 @@ class ImagePage(QWidget):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if path:
-                self.load_source(path)
+                if os.path.isdir(path):
+                    self.folderDropped.emit(path)
+                else:
+                    self.load_source(path)
                 break
         event.acceptProposedAction()

@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFileDialog, 
                                QGridLayout, QHBoxLayout, QLabel, QLineEdit, QSizePolicy,
                                QStackedWidget, QVBoxLayout, QWidget)
 
-from ... import jobs
+from ... import batch, jobs
 from ...audio import formats
 from .. import theme, widgets
 from ..worker import ConvertWorker, DescribeWorker
@@ -105,6 +105,7 @@ class AudioPage(QWidget):
     """Page principale : convertir un projet Audacity ou un fichier audio."""
 
     statusMessage = Signal(str)
+    folderDropped = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -165,6 +166,7 @@ class AudioPage(QWidget):
         self.drop_zone = widgets.DropZone()
         self.drop_zone.clicked.connect(self._browse)
         self.drop_zone.fileDropped.connect(self.load_source)
+        self.drop_zone.folderDropped.connect(self.folderDropped.emit)
         self.source_card = SourceCard()
         self.source_card.changeRequested.connect(self._browse)
         self.source_stack.addWidget(self.drop_zone)
@@ -277,6 +279,22 @@ class AudioPage(QWidget):
             "sample_rate": self.rate_combo.currentData(),
             "mono": self.mono_check.isChecked(),
         }
+
+    def batch_template(self):
+        """Réglages actuels, réutilisables pour un dossier entier."""
+        audio_format = formats.get_format(self._format_key)
+        options = self._current_options()
+        bits = []
+        if audio_format.supports_bitrate:
+            bits.append(options["bitrate"])
+        if audio_format.supports_depth:
+            bits.append("%s bits" % options["depth"])
+        if options["sample_rate"]:
+            bits.append("%s Hz" % int(options["sample_rate"]))
+        if options["mono"]:
+            bits.append("mono")
+        summary = "Page Audio · " + " · ".join(bits) if bits else "Page Audio"
+        return batch.BatchTemplate("audio", self._format_key, summary, options)
 
     def _refresh_controls(self):
         audio_format = formats.get_format(self._format_key)
@@ -465,6 +483,9 @@ class AudioPage(QWidget):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if path:
-                self.load_source(path)
+                if os.path.isdir(path):
+                    self.folderDropped.emit(path)
+                else:
+                    self.load_source(path)
                 break
         event.acceptProposedAction()

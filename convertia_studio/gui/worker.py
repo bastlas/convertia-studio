@@ -213,3 +213,45 @@ class VideoConvertWorker(QThread):
             self.done.emit(result)
         except Exception as error:  # noqa: BLE001 - message destiné à l'utilisateur
             self.failed.emit(str(error))
+
+
+class BatchWorker(QThread):
+    """Traite une liste de conversions, fichier après fichier."""
+
+    itemStarted = Signal(int, str)
+    itemProgress = Signal(int, float, str)
+    itemDone = Signal(int, dict)
+    itemFailed = Signal(int, str)
+    allDone = Signal(int, int, int)   # convertis, échecs, restants
+
+    def __init__(self, entries, settings_by_kind, parent=None):
+        super().__init__(parent)
+        self._entries = entries
+        self._settings = settings_by_kind
+        self._cancelled = False
+
+    def cancel(self):
+        self._cancelled = True
+
+    def run(self):
+        from .. import batch
+
+        converted = 0
+        failed = 0
+        processed = 0
+        for index, entry in enumerate(self._entries):
+            if self._cancelled:
+                break
+            self.itemStarted.emit(index, entry.source)
+            try:
+                result = batch.convert_entry(
+                    entry, self._settings.get(entry.kind),
+                    progress=lambda fraction, message, index=index:
+                    self.itemProgress.emit(index, fraction, message))
+                converted += 1
+                self.itemDone.emit(index, result)
+            except Exception as error:  # noqa: BLE001 - message utilisateur
+                failed += 1
+                self.itemFailed.emit(index, str(error))
+            processed += 1
+        self.allDone.emit(converted, failed, len(self._entries) - processed)

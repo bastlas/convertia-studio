@@ -6,13 +6,16 @@ import os
 
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, Qt, Signal
 from PySide6.QtGui import QBrush, QFont, QIcon, QKeySequence, QPainter, QPixmap, QShortcut
-from PySide6.QtWidgets import (QButtonGroup, QFrame, QGraphicsOpacityEffect, QHBoxLayout,
-                               QLabel, QMainWindow, QStackedWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QFrame,
+                               QGraphicsOpacityEffect, QHBoxLayout, QLabel,
+                               QMainWindow, QStackedWidget, QVBoxLayout,
+                               QWidget)
 
 from .. import APP_NAME, APP_TAGLINE, __version__, ffmpeg_tools
 from ..image import engine as image_engine
 from ..video import engine as video_engine
 from . import theme, widgets
+from .batch_dialog import BatchDialog
 from .pages.audio_page import AudioPage
 from .pages.image_page import ImagePage
 from .pages.video_page import VideoPage
@@ -62,6 +65,7 @@ class Sidebar(QFrame):
     """Colonne de navigation de gauche."""
 
     pageSelected = Signal(int)
+    batchRequested = Signal()
 
     ENTRIES = (("Audio", "audio"), ("Image", "image"), ("Vidéo", "video"))
 
@@ -87,6 +91,15 @@ class Sidebar(QFrame):
             self._group.addButton(button)
             layout.addWidget(button)
             self.buttons.append(button)
+
+        layout.addSpacing(8)
+        self.batch_button = widgets.GhostButton("Traiter un dossier…",
+                                                icon_kind="folder")
+        self.batch_button.setToolTip(
+            "Convertit toutes les images, vidéos et fichiers audio d'un dossier")
+        self.batch_button.clicked.connect(
+            lambda: self.batchRequested.emit())
+        layout.addWidget(self.batch_button)
 
         layout.addStretch(1)
         layout.addWidget(self._build_engine_card())
@@ -173,6 +186,9 @@ class MainWindow(QMainWindow):
         root.addWidget(content, 1)
 
         self.sidebar.pageSelected.connect(self._switch_page)
+        self.sidebar.batchRequested.connect(self.open_batch)
+        for page in (self.audio_page, self.image_page, self.video_page):
+            page.folderDropped.connect(self.open_batch)
         self.audio_page.statusMessage.connect(self.footer_status.setText)
         self.image_page.statusMessage.connect(self.footer_status.setText)
         self.video_page.statusMessage.connect(self.footer_status.setText)
@@ -194,7 +210,7 @@ class MainWindow(QMainWindow):
         self.footer_status = QLabel("Prêt")
         self.footer_status.setObjectName("Faint")
         layout.addWidget(self.footer_status, 1)
-        hint = QLabel("Glissez un fichier n'importe où dans la fenêtre")
+        hint = QLabel("Glissez un fichier ou un dossier dans la fenêtre")
         hint.setObjectName("Faint")
         layout.addWidget(hint)
         return footer
@@ -219,6 +235,9 @@ class MainWindow(QMainWindow):
     # -- routage des fichiers -------------------------------------------
     def _route_file(self, path):
         """Ouvre le fichier sur la page correspondant à son type."""
+        if os.path.isdir(path):
+            self.open_batch(path)
+            return
         if image_engine.is_image(path):
             self.sidebar.select(1)
             self.image_page.load_source(path)
@@ -228,6 +247,22 @@ class MainWindow(QMainWindow):
         else:
             self.sidebar.select(0)
             self.audio_page.load_source(path)
+
+    def open_batch(self, folder=None):
+        """Ouvre le dialogue de traitement d'un dossier entier."""
+        if folder is None:
+            folder = QFileDialog.getExistingDirectory(
+                self, "Choisir un dossier à traiter")
+        if not folder:
+            return
+        folder = os.fspath(folder)
+        templates = {
+            "image": self.image_page.batch_template(),
+            "video": self.video_page.batch_template(),
+            "audio": self.audio_page.batch_template(),
+        }
+        dialog = BatchDialog(folder, templates, self)
+        dialog.exec()
 
     def open_file(self):
         widget = self.pages.currentWidget()

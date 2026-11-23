@@ -14,7 +14,7 @@ et poids estimé.
 
 <sub>Les trois sections sont disponibles :
 [Audio](docs/apercu-audio.png) · [Image](docs/apercu-image.png) ·
-[Vidéo](docs/apercu-video.png).</sub>
+[Vidéo](docs/apercu-video.png) · [Traitement d'un dossier](docs/apercu-lot.png).</sub>
 
 ## Télécharger (Windows)
 
@@ -120,6 +120,28 @@ ou dimensions personnalisées, avec bandes noires ou rognage), changer la
 (0,5× → 2×) et l'**audio** (AAC ou Opus, copie sans réencodage, suppression).
 La page montre une vignette à la position choisie, le poids estimé avant /
 après et permet d'**extraire l'image courante** en PNG.
+
+## Traiter un dossier
+
+Le bouton **« Traiter un dossier… »** de la barre latérale (ou le
+glisser-déposer d'un dossier sur la fenêtre) ouvre le traitement par lot :
+
+![Aperçu du traitement d'un dossier](docs/apercu-lot.png)
+
+1. le dossier est analysé et ses fichiers classés en **images**, **vidéos** et
+   **audio** (option *Inclure les sous-dossiers*) ;
+2. chaque famille affiche son nombre de fichiers, son poids et son format de
+   sortie, modifiable ; les autres réglages sont repris des pages : qualité
+   d'image, CRF / vitesse / audio de la vidéo, débit et profondeur de l'audio ;
+3. le dossier de sortie est libre (par défaut `<dossier>/converti`), et
+   l'arborescence est conservée ;
+4. la conversion s'enchaîne fichier par fichier avec la progression, le
+   journal, l'annulation et un bilan (convertis / échecs).
+
+Les fichiers source ne sont jamais écrasés : en cas de nom déjà pris, un
+suffixe `-2`, `-3`… est ajouté. Les extensions inconnues sont ignorées et
+signalées. Pour extraire la piste audio d'une vidéo, utiliser la page Audio
+(un fichier `.mp4` est classé comme vidéo dans le lot).
 
 ## Ligne de commande
 
@@ -245,8 +267,10 @@ correcte entre 0,5× et 2×).
 | `convertia_studio/jobs.py` | analyse d'une source audio et orchestration de la conversion |
 | `convertia_studio/ffmpeg_tools.py` | localisation de ffmpeg / ffprobe, analyse des médias |
 | `convertia_studio/cli.py` | ligne de commande |
+| `convertia_studio/batch.py` | analyse d'un dossier et plan de conversion par lot |
 | `convertia_studio/gui/` | interface PySide6 (`app`, `window`, `widgets`, `theme`, `pages/`, `crop_dialog.py`) |
 | `convertia_studio/gui/pages/video_page.py` | page Vidéo (découpe, aperçu, encodage) |
+| `convertia_studio/gui/batch_dialog.py` | dialogue de traitement d'un dossier |
 | `convertia_studio.pyw` | lanceur (fenêtre, ou `--cli` pour la console) |
 | `tests/` | tests unitaires + générateur de projets Audacity de test |
 | `build/` | recettes PyInstaller, icône, scripts de compilation |

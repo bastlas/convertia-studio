@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from PySide6.QtCore import (Property, QEasingCurve, QEvent, QPointF, QPropertyAnimation,
                             QRectF, QSize, Qt, QTimer, Signal)
 from PySide6.QtGui import (QBrush, QColor, QFont, QIcon, QPainter, QPainterPath, QPen,
@@ -624,6 +626,7 @@ class DropZone(QFrame):
 
     clicked = Signal()
     fileDropped = Signal(str)
+    folderDropped = Signal(str)
 
     def __init__(self, parent=None, glyph="waveform",
                  title="Déposez un fichier ici",
@@ -702,7 +705,10 @@ class DropZone(QFrame):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if path:
-                self.fileDropped.emit(path)
+                if os.path.isdir(path):
+                    self.folderDropped.emit(path)
+                else:
+                    self.fileDropped.emit(path)
                 break
         event.acceptProposedAction()
 

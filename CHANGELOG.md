@@ -1,5 +1,22 @@
 # Journal des versions
 
+## 2.2.0 — 23 novembre 2026
+
+Traitement d'un **dossier entier** :
+
+- bouton « Traiter un dossier… » dans la barre latérale, ou glisser-déposer
+  d'un dossier sur la fenêtre ou une page ;
+- analyse du dossier (option « inclure les sous-dossiers »), classement des
+  fichiers en images / vidéos / audio, extensions non gérées ignorées ;
+- une ligne par famille : nombre de fichiers, poids, format de sortie
+  modifiable, rappel des réglages repris de la page correspondante
+  (qualité image, CRF et audio vidéo, débit et profondeur audio) ;
+- dossier de sortie choisi (par défaut `<dossier>/converti`), arborescence
+  conservée, aucun fichier source écrasé (suffixes `-2`, `-3` au besoin) ;
+- progression globale et par fichier, journal détaillé, annulation, bilan
+  des conversions réussies et des échecs ;
+- reprend le correctif Linux 2.1.3 (ffmpeg statique et repli sur le système).
+
 ## 2.1.3 — 23 novembre 2026
 
 - Correctif Linux : les binaires ffmpeg / ffprobe de l'archive sont désormais
