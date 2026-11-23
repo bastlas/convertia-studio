@@ -47,5 +47,6 @@ echo "→ création de l'étiquette ${TAG}"
 git tag -a "${TAG}" -m "${MESSAGE}"
 git push origin "${TAG}"
 
-echo "Terminé : https://github.com/${GITHUB_REPOSITORY:-$(git remote get-url origin | sed -E 's#.*[:/]([^/]+/[^/]+?)(\.git)?$#\1#')}/releases/tag/${TAG}"
+SLUG="$(git remote get-url origin | sed -E 's#^(git@[^:]+:|https://[^/]+/|ssh://[^/]+/)##; s#\.git$##')"
+echo "Terminé : https://github.com/${SLUG}/releases/tag/${TAG}"
 echo "La compilation Windows démarre dans l'onglet Actions ; compte une dizaine de minutes."
