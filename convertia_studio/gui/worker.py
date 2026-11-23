@@ -143,3 +143,73 @@ class ImageConvertWorker(QThread):
             self.done.emit(result)
         except Exception as error:  # noqa: BLE001 - message destiné à l'utilisateur
             self.failed.emit(str(error))
+
+
+class VideoDescribeWorker(QThread):
+    """Analyse une vidéo (pistes, dimensions, durée)."""
+
+    done = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, path, parent=None):
+        super().__init__(parent)
+        self._path = path
+
+    def run(self):
+        try:
+            from ..video import engine
+
+            self.done.emit(engine.describe(self._path))
+        except Exception as error:  # noqa: BLE001 - message destiné à l'utilisateur
+            self.failed.emit(str(error))
+
+
+class VideoThumbWorker(QThread):
+    """Extrait une image de la vidéo pour l'aperçu."""
+
+    done = Signal(int, bytes, float)
+    failed = Signal(int, str)
+
+    def __init__(self, path, seconds, token, max_side=960, parent=None):
+        super().__init__(parent)
+        self._path = path
+        self._seconds = seconds
+        self._token = token
+        self._max_side = max_side
+
+    def run(self):
+        try:
+            from ..video import engine
+
+            data = engine.thumbnail(self._path, self._seconds,
+                                    max_side=self._max_side)
+            self.done.emit(self._token, data, self._seconds)
+        except Exception as error:  # noqa: BLE001 - message destiné à l'utilisateur
+            self.failed.emit(self._token, str(error))
+
+
+class VideoConvertWorker(QThread):
+    """Encode la vidéo vers le format choisi."""
+
+    progress = Signal(float, str)
+    done = Signal(dict)
+    failed = Signal(str)
+
+    def __init__(self, source, dest, format_key, settings, parent=None):
+        super().__init__(parent)
+        self._source = source
+        self._dest = dest
+        self._format_key = format_key
+        self._settings = settings
+
+    def run(self):
+        try:
+            from ..video import engine
+
+            result = engine.convert(
+                self._source, self._dest, self._format_key, self._settings,
+                progress=lambda fraction, message: self.progress.emit(
+                    fraction, message))
+            self.done.emit(result)
+        except Exception as error:  # noqa: BLE001 - message destiné à l'utilisateur
+            self.failed.emit(str(error))

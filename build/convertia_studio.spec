@@ -46,6 +46,9 @@ hiddenimports = [
     "convertia_studio.gui.crop_dialog",
     "convertia_studio.image.engine",
     "convertia_studio.image.formats",
+    "convertia_studio.gui.pages.video_page",
+    "convertia_studio.video.engine",
+    "convertia_studio.video.formats",
 ]
 
 icon = os.path.join(ROOT, "build", "convertia_studio.ico")

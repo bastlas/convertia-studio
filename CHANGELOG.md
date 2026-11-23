@@ -1,5 +1,26 @@
 # Journal des versions
 
+## 2.2.0 — 23 novembre 2026
+
+Section **Vidéo** complète, et nouveau sélecteur de taille pour l'image :
+
+- analyse des vidéos (durée, dimensions, cadence, codecs, débits, poids) ;
+- sorties MP4 · H.264, MP4 · H.265, WebM · VP9 et MKV · H.264, avec détection
+  des encodeurs disponibles dans ffmpeg ;
+- découpe début / fin, repositionnable depuis la vignette de contrôle ;
+- tailles HD, Full HD, 2K, Ultra HD 4K, 8K, portrait, carré ou personnalisées,
+  avec ajustement (bandes noires) ou remplissage (rognage) ;
+- qualité CRF, vitesse d'encodage, cadence, rotation, vitesse de lecture ;
+- audio AAC / Opus, copie sans réencodage ou suppression ;
+- vignette à la position choisie, extraction de l'image courante en PNG,
+  estimation du poids et comparaison avant / après ;
+- glisser-déposer routé selon le type réel du fichier (audio, image, vidéo) ;
+- ligne de commande : `--video`, `--crf`, `--start`, `--end`, `--fps`,
+  `--speed`, `--fill`, `--no-audio`, `--audio-copy`, `--list-video-formats` ;
+- image : la taille se choisit désormais dans un panneau (HD → 8K, carré,
+  portrait) ou en dimensions personnalisées ; l'aperçu reflète la compression ;
+- tests vidéo et conversions de contrôle dans la CI Windows.
+
 ## 2.1.1 — 23 novembre 2026
 
 - L'aperçu reflète la compression : il est encodé dans le format cible (JPEG,

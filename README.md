@@ -5,16 +5,16 @@ de commande. Côté **audio**, elle convertit les **projets Audacity** (`.aup3`,
 `.aup4`, y compris les fichiers `*unsaved`) et **n'importe quel fichier audio**
 vers neuf formats de sortie — sans lancer Audacity. Côté **image**, elle
 recadre, redimensionne, pivote et compresse les images (PNG, JPEG, WebP, AVIF,
-TIFF, BMP) avec aperçu et comparaison du poids avant / après.
-
-> **Section à venir** : la partie « Vidéo » est déjà présente dans la
-> navigation et attend son contenu (voir
-> [Étendre l'application](#étendre-lapplication)).
+TIFF, BMP) avec aperçu et comparaison du poids avant / après. Côté **vidéo**,
+elle découpe, redimensionne, change la cadence, la vitesse et l'audio, puis
+compresse en MP4 (H.264 / H.265), WebM (VP9) ou MKV, avec vignette de contrôle
+et poids estimé.
 
 ![Aperçu de la page Audio](docs/apercu-audio.png)
 
-<sub>La section Image est disponible : [aperçu](docs/apercu-image.png) · la
-section Vidéo reste à définir : [aperçu](docs/apercu-video.png).</sub>
+<sub>Les trois sections sont disponibles :
+[Audio](docs/apercu-audio.png) · [Image](docs/apercu-image.png) ·
+[Vidéo](docs/apercu-video.png).</sub>
 
 ## Télécharger (Windows)
 
@@ -89,9 +89,35 @@ la première image d'un GIF ou d'un WebP animé est conservée.
 
 Transformations disponibles, appliquées dans cet ordre : **recadrage**
 (sélection à la souris), **rotation** (90° / 180°), **miroir** et
-**redimensionnement** (avec conservation des proportions). La page affiche un
-aperçu du résultat, le poids estimé et l'écart avant / après ; la transparence
-est aplatie sur fond blanc pour les formats qui ne la gèrent pas.
+**redimensionnement**. La taille se choisit dans un panneau déroulant
+(**Originale**, **HD**, **Full HD**, **2K**, **Ultra HD 4K**, **8K**,
+**Carré**, **Portrait**) ou en **Personnalisé** pour saisir ses dimensions.
+Les préréglages ajustent l'image dans le cadre en conservant ses proportions.
+
+La page affiche un aperçu du résultat (encodé aux réglages choisis, artefacts
+de compression compris), le poids estimé et l'écart avant / après ; la
+transparence est aplatie sur fond blanc pour les formats qui ne la gèrent pas.
+
+### Vidéo
+
+**En entrée** : MP4, M4V, MKV, WebM, MOV, AVI, WMV, FLV, MPG, TS, M2TS, 3GP,
+OGV… La piste vidéo est détectée par ffprobe ; un MP4 sans piste vidéo reste
+traité comme de l'audio.
+
+| Format | Extension | Codecs | Réglages |
+| --- | --- | --- | --- |
+| MP4 · H.264 | `.mp4` | H.264 + AAC | CRF, cadence, résolution, audio |
+| MP4 · H.265 | `.mp4` | H.265 + AAC | plus compact, liseurs récents |
+| WebM · VP9 | `.webm` | VP9 + Opus | ouvert, idéal pour le web |
+| MKV · H.264 | `.mkv` | H.264 + AAC | conteneur souple |
+
+Chaque conversion peut **découper un extrait** (début / fin, positionnables
+depuis la vignette), **redimensionner** (préréglages HD → 8K, portrait, carré,
+ou dimensions personnalisées, avec bandes noires ou rognage), changer la
+**cadence** (24 → 60 i/s), la **rotation** (90° / 180°), la **vitesse**
+(0,5× → 2×) et l'**audio** (AAC ou Opus, copie sans réencodage, suppression).
+La page montre une vignette à la position choisie, le poids estimé avant /
+après et permet d'**extraire l'image courante** en PNG.
 
 ## Ligne de commande
 
@@ -109,18 +135,33 @@ python3 -m convertia_studio interview.wav -f opus -b 64k --mono
 python3 -m convertia_studio photo.png -f webp -Q 70 \
     --crop 100,50,1200,800 --rotate 90 --resize 800x600 -o photo.webp
 
+# vidéo : extrait de 1:20 à 2:05 en Full HD
+python3 -m convertia_studio --video film.mkv -f mp4 \
+    --start 1:20 --end 2:05 --resize 1920x1080 -o extrait.mp4
+
+# vidéo → WebM sans audio, cadence 30 i/s et vitesse 1,5×
+python3 -m convertia_studio --video clip.mov -f webm --crf 32 \
+    --no-audio --fps 30 --speed 1.5 -o clip.webm
+
 # analyser une source sans convertir
 python3 -m convertia_studio "mon projet.aup4" --info
+python3 -m convertia_studio --video film.mkv --info
 
 # lister les formats disponibles
 python3 -m convertia_studio --list-formats
 python3 -m convertia_studio --list-image-formats
+python3 -m convertia_studio --list-video-formats
 ```
 
 Options audio : `-b/--bitrate`, `--depth`, `--sample-rate`, `--mono`.
 Options image : `-Q/--quality`, `--resize`, `--crop`, `--rotate`, `--flip-h`,
-`--flip-v`. Options communes : `-o/--output`, `-f/--format`, `--info`,
-`--list-formats`, `--list-image-formats`, `-q/--quiet`, `--force`, `--version`.
+`--flip-v`.
+Options vidéo (avec `--video`) : `--crf`, `--video-speed`, `--start`, `--end`,
+`--fps`, `--speed`, `--fill`, `--no-audio`, `--audio-copy`,
+`--audio-bitrate`, `--resize`, `--rotate`.
+Options communes : `-o/--output`, `-f/--format`, `--info`, `--list-formats`,
+`--list-image-formats`, `--list-video-formats`, `-q/--quiet`, `--force`,
+`--version`.
 
 Depuis l'exécutable Windows (compilé sans console), la ligne de commande reste
 accessible en préfixant par `--cli` :
@@ -128,6 +169,7 @@ accessible en préfixant par `--cli` :
 ```bat
 ConvertiaStudio.exe --cli "C:\projets\mon projet.aup4" -f flac --force
 ConvertiaStudio.exe --cli "C:\photos\portrait.jpg" -f webp -Q 75 --resize 50%%
+ConvertiaStudio.exe --cli --video "C:\vidéos\film.mkv" -f mp4 --start 1:20 --end 2:05
 ```
 
 ## Ce que le mixage restitue
@@ -158,6 +200,26 @@ Pour un projet Audacity, l'outil reproduit ce que contient le fichier :
 - GIF et WebP animés : seule la première image est convertie ;
 - images de plus de 8 bits par canal ramenées à 8 bits.
 
+## Traitement des vidéos
+
+- découpe précise par réencodage (`-ss` / `-t`), début et fin posables depuis
+  la vignette de contrôle ;
+- cadres exacts HD (1280 × 720), Full HD (1920 × 1080), 2K, Ultra HD 4K, 8K,
+  portrait, carré ou personnalisé : **ajuster** (bandes noires) ou **remplir**
+  (rogner les bords) ;
+- qualité par **CRF** (16 → 36 selon le codec) et vitesse d'encodage
+  Rapide / Équilibré / Qualité ;
+- cadence 24, 25, 30, 50 ou 60 i/s, rotation 90° / 180°, vitesse 0,5× → 2× ;
+- audio AAC (MP4/MKV) ou Opus (WebM), copie de la piste source sans réencodage
+  quand le conteneur l'accepte, ou suppression ;
+- extraction de l'image courante en PNG ;
+- estimation du poids final (indicative) comparée à la source.
+
+Limites actuelles : une seule piste vidéo et une seule piste audio (la
+première), pas de sous-titres ni de chapitres ajoutés, pas de conversion HDR →
+SDR ni de stabilisation ; la vitesse modifie le son avec `atempo` (qualité
+correcte entre 0,5× et 2×).
+
 ## Ce qui n'est pas restitué (audio)
 
 - **Effets temps réel** d'Audacity : ils ne sont pas stockés dans le projet
@@ -176,10 +238,13 @@ Pour un projet Audacity, l'outil reproduit ce que contient le fichier :
 | `convertia_studio/audio/formats.py` | registre des formats, encodage, écriture WAV/AIFF |
 | `convertia_studio/image/engine.py` | transformations et encodage des images (Pillow) |
 | `convertia_studio/image/formats.py` | registre des formats d'image |
+| `convertia_studio/video/engine.py` | analyse, vignettes et encodage vidéo (ffmpeg) |
+| `convertia_studio/video/formats.py` | conteneurs et codecs vidéo |
 | `convertia_studio/jobs.py` | analyse d'une source audio et orchestration de la conversion |
 | `convertia_studio/ffmpeg_tools.py` | localisation de ffmpeg / ffprobe, analyse des médias |
 | `convertia_studio/cli.py` | ligne de commande |
 | `convertia_studio/gui/` | interface PySide6 (`app`, `window`, `widgets`, `theme`, `pages/`, `crop_dialog.py`) |
+| `convertia_studio/gui/pages/video_page.py` | page Vidéo (découpe, aperçu, encodage) |
 | `convertia_studio.pyw` | lanceur (fenêtre, ou `--cli` pour la console) |
 | `tests/` | tests unitaires + générateur de projets Audacity de test |
 | `build/` | recettes PyInstaller, icône, scripts de compilation |
@@ -189,15 +254,13 @@ Pour un projet Audacity, l'outil reproduit ce que contient le fichier :
 
 ## Étendre l'application
 
-La navigation et la structure sont prêtes pour de nouvelles sections :
-
-La section Image sert d'exemple complet.
+Chaque section suit le même schéma ; `image/` et `video/` servent d'exemples.
 
 1. créer une page dans `convertia_studio/gui/pages/` (voir `coming_soon.py`) ;
 2. ajouter l'entrée dans `Sidebar.ENTRIES` et le `QStackedWidget` de
    `MainWindow` ;
-3. placer la logique métier dans un module dédié (`convertia_studio/video/`)
-   et l'exposer comme `image/engine.py` le fait pour les images.
+3. placer la logique métier dans un module dédié (`convertia_studio/<section>/`)
+   et l'exposer via une page, comme `image/engine.py` et `video/engine.py`.
 
 ## Publier une version
 
@@ -207,8 +270,8 @@ version téléchargeable (Release GitHub avec l'exécutable Windows) :
 ```bash
 # 1. mettre à jour __version__ dans convertia_studio/__init__.py et CHANGELOG.md
 # 2. committer, puis étiqueter et pousser (le tag déclenche la compilation)
-git add -A && git commit -m "Convertia Studio 2.0.1"
-./scripts/release.sh v2.0.1
+git add -A && git commit -m "Convertia Studio 2.2.1"
+./scripts/release.sh v2.2.1
 ```
 
 `scripts/release.sh` vérifie que l'arbre est propre et que l'étiquette

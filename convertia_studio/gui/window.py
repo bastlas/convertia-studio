@@ -11,10 +11,11 @@ from PySide6.QtWidgets import (QButtonGroup, QFrame, QGraphicsOpacityEffect, QHB
 
 from .. import APP_NAME, APP_TAGLINE, __version__, ffmpeg_tools
 from ..image import engine as image_engine
+from ..video import engine as video_engine
 from . import theme, widgets
 from .pages.audio_page import AudioPage
-from .pages.coming_soon import ComingSoonPage
 from .pages.image_page import ImagePage
+from .pages.video_page import VideoPage
 
 
 class BrandMark(QWidget):
@@ -163,16 +164,7 @@ class MainWindow(QMainWindow):
         self.pages = QStackedWidget()
         self.audio_page = AudioPage()
         self.image_page = ImagePage()
-        self.video_page = ComingSoonPage(
-            "Vidéo",
-            "Convertir, découper et extraire l'audio de vos vidéos — section à venir.",
-            "video", theme.COLORS["magenta"],
-            (("Conteneurs", "MP4, MKV, WebM et MOV, avec choix des codecs."),
-             ("Découpe", "Extraire un passage, remplacer la piste audio."),
-             ("Audio", "Récupérer la piste son d'une vidéo dans tous les formats de "
-                       "la page Audio.")),
-            "Comme pour l'image, on en reparlera pour décider du contenu exact et "
-            "des priorités.")
+        self.video_page = VideoPage()
         self.pages.addWidget(self.audio_page)
         self.pages.addWidget(self.image_page)
         self.pages.addWidget(self.video_page)
@@ -183,6 +175,7 @@ class MainWindow(QMainWindow):
         self.sidebar.pageSelected.connect(self._switch_page)
         self.audio_page.statusMessage.connect(self.footer_status.setText)
         self.image_page.statusMessage.connect(self.footer_status.setText)
+        self.video_page.statusMessage.connect(self.footer_status.setText)
 
         self.setAcceptDrops(True)
         QShortcut(QKeySequence.StandardKey.Open, self, activated=self.open_file)
@@ -229,6 +222,9 @@ class MainWindow(QMainWindow):
         if image_engine.is_image(path):
             self.sidebar.select(1)
             self.image_page.load_source(path)
+        elif video_engine.is_video(path):
+            self.sidebar.select(2)
+            self.video_page.load_source(path)
         else:
             self.sidebar.select(0)
             self.audio_page.load_source(path)
@@ -237,6 +233,8 @@ class MainWindow(QMainWindow):
         widget = self.pages.currentWidget()
         if widget is self.image_page:
             self.image_page.browse()
+        elif widget is self.video_page:
+            self.video_page.browse()
         else:
             self.audio_page._browse()
 
@@ -244,6 +242,8 @@ class MainWindow(QMainWindow):
         widget = self.pages.currentWidget()
         if widget is self.image_page:
             self.image_page.start_conversion()
+        elif widget is self.video_page:
+            self.video_page.start_conversion()
         else:
             self.audio_page.start_conversion()
 

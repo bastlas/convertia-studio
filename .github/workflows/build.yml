@@ -35,8 +35,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6" "Pillow>=11"
 
-      - name: Tests unitaires
-        run: python -m unittest discover -s tests -t . -v
 
       - name: Téléchargement de ffmpeg et ffprobe
         shell: pwsh
@@ -46,6 +44,12 @@ jobs:
           New-Item -ItemType Directory -Force bin | Out-Null
           Copy-Item (Get-ChildItem -Recurse -Filter ffmpeg.exe ffmpeg | Select-Object -First 1).FullName bin\
           Copy-Item (Get-ChildItem -Recurse -Filter ffprobe.exe ffmpeg | Select-Object -First 1).FullName bin\
+
+      - name: Tests unitaires
+        shell: pwsh
+        run: |
+          $env:PATH = "${{ github.workspace }}\bin;$env:PATH"
+          python -m unittest discover -s tests -t . -v
 
       - name: Compilation PyInstaller
         run: |
@@ -68,6 +72,20 @@ jobs:
                              "-o", "smoke.webp", "--force" -Wait -PassThru -NoNewWindow
           if ($p.ExitCode -ne 0) { throw "conversion d'image échouée (code $($p.ExitCode))" }
           if (-not (Test-Path "smoke.webp")) { throw "smoke.webp absent" }
+
+      - name: Test de conversion vidéo
+        shell: pwsh
+        run: |
+          bin/ffmpeg.exe -hide_banner -loglevel error -y `
+            -f lavfi -i "testsrc=size=320x240:rate=25:duration=1" `
+            -f lavfi -i "sine=frequency=440:duration=1" `
+            -c:v libx264 -preset veryfast -pix_fmt yuv420p -c:a aac -shortest smoke.mp4
+          $p = Start-Process -FilePath "dist/ConvertiaStudio/ConvertiaStudio.exe" `
+               -ArgumentList "--cli", "--video", "smoke.mp4", "-f", "webm", `
+                             "--resize", "240x180", "-o", "smoke-video.webm", `
+                             "--force" -Wait -PassThru -NoNewWindow
+          if ($p.ExitCode -ne 0) { throw "conversion vidéo échouée (code $($p.ExitCode))" }
+          if (-not (Test-Path "smoke-video.webm")) { throw "smoke-video.webm absent" }
 
       - name: Assemblage du dossier portable
         shell: pwsh
@@ -104,8 +122,6 @@ jobs:
           sudo apt-get update && sudo apt-get install -y ffmpeg libegl1 libgl1 libxkbcommon0 libxcb-cursor0
           python -m pip install --upgrade pip
           python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6" "Pillow>=11"
-      - name: Tests unitaires
-        run: python -m unittest discover -s tests -t . -v
       - name: Compilation
         run: |
           mkdir -p bin && cp "$(command -v ffmpeg)" bin/ && cp "$(command -v ffprobe)" bin/

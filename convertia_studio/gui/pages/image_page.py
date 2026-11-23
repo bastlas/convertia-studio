@@ -29,13 +29,19 @@ MIRRORS = (("Aucun", (False, False)), ("Horizontal", (True, False)),
 ANGLES = (("Aucune", 0), ("90° horaire", 90), ("180°", 180),
           ("90° antihoraire", 270))
 
-
-def _small_ghost(text, icon_kind=None):
-    """Bouton secondaire compact pour les rangées de réglages."""
-    button = widgets.GhostButton(text, icon_kind=icon_kind)
-    button.setFixedHeight(28)
-    button.setFont(theme.ui_font(11, QFont.Weight.Medium))
-    return button
+#: Tailles proposées dans le panneau « Taille ».  L'image est ajustée dans ce
+#: cadre en conservant ses proportions : aucune déformation.
+SIZE_PRESETS = (
+    ("Originale", None),
+    ("HD", (1280, 720)),
+    ("Full HD", (1920, 1080)),
+    ("2K", (2560, 1440)),
+    ("Ultra HD", (3840, 2160)),
+    ("8K", (7680, 4320)),
+    ("Carré", (1080, 1080)),
+    ("Portrait", (1080, 1920)),
+)
+CUSTOM_SIZE = "custom"
 
 
 class ImageSourceCard(QFrame):
@@ -77,7 +83,7 @@ class ImageSourceCard(QFrame):
         layout.addWidget(self.details)
 
         bottom = QHBoxLayout()
-        self.change = _small_ghost("Changer d'image", "folder")
+        self.change = widgets.small_ghost("Changer d'image", "folder")
         self.change.clicked.connect(self.changeRequested)
         bottom.addWidget(self.change)
         self.meta = QLabel("")
@@ -99,141 +105,6 @@ class ImageSourceCard(QFrame):
         self.meta.setText("")
 
 
-class PreviewPane(QWidget):
-    """Aperçu de l'image, damier derrière la transparence."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setMinimumHeight(150)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding,
-                           QSizePolicy.Policy.Expanding)
-        self._pixmap = QPixmap()
-        self._caption = ""
-        self._empty = "Déposez une image pour voir l'aperçu."
-        self._checker = None
-
-    def set_pixmap(self, pixmap, caption):
-        self._pixmap = pixmap
-        self._caption = caption
-        self.update()
-
-    def set_empty(self, text):
-        self._pixmap = QPixmap()
-        self._caption = ""
-        self._empty = text
-        self.update()
-
-    def _checker_brush(self):
-        if self._checker is None:
-            tile = QPixmap(20, 20)
-            tile.fill(QColor("#0B111D"))
-            painter = QPainter(tile)
-            painter.fillRect(0, 0, 10, 10, QColor("#101A2B"))
-            painter.fillRect(10, 10, 10, 10, QColor("#101A2B"))
-            painter.end()
-            self._checker = QBrush(tile)
-        return self._checker
-
-    def paintEvent(self, _event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-        outer = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        painter.setBrush(QColor(theme.COLORS["bg_alt"]))
-        painter.setPen(QPen(QColor(theme.COLORS["line_soft"]), 1))
-        painter.drawRoundedRect(outer, 12, 12)
-
-        if self._pixmap.isNull():
-            painter.setPen(QColor(theme.COLORS["text_faint"]))
-            painter.setFont(theme.ui_font(12))
-            painter.drawText(outer.adjusted(18, 18, -18, -18),
-                             Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
-                             self._empty)
-            return
-
-        available = outer.adjusted(10, 10, -10, -10)
-        size = self._pixmap.size()
-        scale = min(available.width() / size.width(),
-                    available.height() / size.height())
-        width = size.width() * scale
-        height = size.height() * scale
-        target = QRectF(available.x() + (available.width() - width) / 2,
-                        available.y() + (available.height() - height) / 2,
-                        width, height)
-        painter.setClipRect(target)
-        painter.fillRect(target, self._checker_brush())
-        painter.setClipRect(outer)
-        painter.drawPixmap(target, self._pixmap, QRectF(self._pixmap.rect()))
-
-        if self._caption:
-            painter.setFont(theme.mono_font(10))
-            metrics = painter.fontMetrics()
-            box_width = metrics.horizontalAdvance(self._caption) + 16
-            box = QRectF(target.left() + 8, target.top() + 8, box_width, 20)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(5, 7, 14, 205))
-            painter.drawRoundedRect(box, 6, 6)
-            painter.setPen(QColor(theme.COLORS["cyan"]))
-            painter.drawText(box, Qt.AlignmentFlag.AlignCenter, self._caption)
-
-
-class CompareBars(QWidget):
-    """Deux barres proportionnelles : poids avant / poids estimé."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedHeight(50)
-        self._before = 0
-        self._after = None
-
-    def set_sizes(self, before, after):
-        self._before = before or 0
-        self._after = after
-        self.update()
-
-    def paintEvent(self, _event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setFont(theme.ui_font(10, QFont.Weight.DemiBold))
-        label_width = 44
-        value_width = 66
-        bar_width = max(20, self.width() - label_width - value_width - 10)
-        maximum = max(self._before, self._after or 0, 1)
-        rows = (("AVANT", self._before, QColor(theme.COLORS["text_faint"])),
-                ("APRÈS", self._after,
-                 QColor(theme.COLORS["green"] if
-                       (self._after is None or self._after <= self._before)
-                       else theme.COLORS["red"])))
-        painter.setPen(Qt.PenStyle.NoPen)
-        for index, (label, value, colour) in enumerate(rows):
-            y = 4 + index * 23
-            painter.setPen(QColor(theme.COLORS["text_faint"] if index == 0
-                                  else theme.COLORS["text_dim"]))
-            painter.drawText(QRectF(0, y, label_width, 16),
-                             Qt.AlignmentFlag.AlignVCenter, label)
-            track = QRectF(label_width, y + 3, bar_width, 10)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(theme.COLORS["line_soft"]))
-            painter.drawRoundedRect(track, 5, 5)
-            if value:
-                width = max(6.0, bar_width * value / maximum)
-                if value is self._after and index == 1:
-                    colour = QColor(colour)
-                    colour.setAlpha(230)
-                painter.setBrush(colour)
-                painter.drawRoundedRect(QRectF(track.x(), track.y(), width,
-                                               track.height()), 5, 5)
-            painter.setFont(theme.mono_font(10))
-            painter.setPen(QColor(theme.COLORS["text_dim"]))
-            text = "calcul…" if (index == 1 and value is None) else (
-                engine.human_size(value) if value else "—")
-            painter.drawText(QRectF(label_width + bar_width + 8, y - 1,
-                                    value_width, 16),
-                             Qt.AlignmentFlag.AlignVCenter |
-                             Qt.AlignmentFlag.AlignRight, text)
-            painter.setFont(theme.ui_font(10, QFont.Weight.DemiBold))
-
-
 class ImagePage(QWidget):
     """Page principale : préparer et convertir une image."""
 
@@ -245,7 +116,6 @@ class ImagePage(QWidget):
         self._format_key = "jpeg"
         self._busy = False
         self._crop = None
-        self._auto_dims = True
         self._loading_spins = False
         self._before_pixmap = None
         self._after_pixmap = None
@@ -287,7 +157,7 @@ class ImagePage(QWidget):
         body = QHBoxLayout()
         body.setSpacing(18)
         body.addLayout(self._build_left(), 6)
-        body.addLayout(self._build_right(), 4)
+        body.addWidget(self._build_right(), 4)
         root.addLayout(body, 1)
 
     def _build_header(self):
@@ -333,12 +203,12 @@ class ImagePage(QWidget):
         self.preview_dims.setObjectName("Faint")
         head.addWidget(self.preview_dims)
         head.addStretch(1)
-        self.compare_toggle = _small_ghost("Voir l'original")
+        self.compare_toggle = widgets.small_ghost("Voir l'original")
         self.compare_toggle.clicked.connect(self._toggle_preview)
         self.compare_toggle.setEnabled(False)
         head.addWidget(self.compare_toggle)
         preview_card.add_layout(head)
-        self.preview = PreviewPane()
+        self.preview = widgets.PreviewPane()
         preview_card.body().addWidget(self.preview, 1)
         column.addWidget(preview_card, 1)
 
@@ -381,23 +251,46 @@ class ImagePage(QWidget):
         return column
 
     def _build_right(self):
-        column = QVBoxLayout()
+        content = QWidget()
+        column = QVBoxLayout(content)
+        column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(14)
 
-        settings = widgets.Card(padding=14, spacing=8)
+        settings = widgets.Card(padding=12, spacing=8)
         settings.body().addWidget(widgets.SectionLabel("Traitement"))
 
         self.crop_label = QLabel("Toute l'image")
         self.crop_label.setObjectName("Muted")
         self.crop_label.setToolTip("Zone conservée de l'image")
-        self.crop_label.setSizePolicy(QSizePolicy.Policy.Expanding,
+        self.crop_label.setSizePolicy(QSizePolicy.Policy.Ignored,
                                       QSizePolicy.Policy.Preferred)
-        self.crop_button = _small_ghost("Recadrer…", "image")
+        self.crop_label.setMinimumWidth(30)
+        self.crop_button = widgets.small_ghost("Recadrer…", "image")
         self.crop_button.clicked.connect(self._open_crop)
-        self.crop_clear = _small_ghost("Tout")
+        self.crop_clear = widgets.small_ghost("Tout")
         self.crop_clear.clicked.connect(self._clear_crop)
         settings.add_layout(self._row("Recadrage", self.crop_label,
                                       self.crop_button, self.crop_clear))
+
+        self.size_combo = QComboBox()
+        for label, value in SIZE_PRESETS:
+            self.size_combo.addItem(label, value)
+        self.size_combo.addItem("Personnalisé…", CUSTOM_SIZE)
+        self.size_combo.setMinimumContentsLength(6)
+        self.size_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.size_combo.setMinimumWidth(108)
+        self.size_combo.setToolTip(
+            "Choisit la taille de sortie. Les préréglages ajustent l'image "
+            "dans le cadre (HD, Full HD, 4K…) sans déformer ses proportions.")
+        self.size_combo.currentIndexChanged.connect(self._size_mode_changed)
+        self.size_result = QLabel("")
+        self.size_result.setObjectName("Mono")
+        self.size_result.setMinimumWidth(86)
+        self.size_result.setAlignment(Qt.AlignmentFlag.AlignRight |
+                                      Qt.AlignmentFlag.AlignVCenter)
+        settings.add_layout(self._row("Taille :", self.size_combo,
+                                      self.size_result))
 
         self.width_spin = QSpinBox()
         self.height_spin = QSpinBox()
@@ -405,6 +298,9 @@ class ImagePage(QWidget):
             spin.setRange(1, 60000)
             spin.setKeyboardTracking(False)
             spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            spin.setSizePolicy(QSizePolicy.Policy.Ignored,
+                               QSizePolicy.Policy.Fixed)
+            spin.setMinimumWidth(56)
         self.width_spin.valueChanged.connect(self._width_changed)
         self.height_spin.valueChanged.connect(self._height_changed)
         self.lock_ratio = QCheckBox("Lier")
@@ -412,14 +308,19 @@ class ImagePage(QWidget):
         self.lock_ratio.setToolTip("Conserver les proportions")
         cross = QLabel("×")
         cross.setObjectName("Faint")
-        reset_dims = _small_ghost("Orig.")
-        reset_dims.setToolTip("Revenir à la taille de l'image")
-        reset_dims.clicked.connect(self._reset_dims)
         self.width_spin.setToolTip("Largeur de sortie en pixels")
         self.height_spin.setToolTip("Hauteur de sortie en pixels")
-        settings.add_layout(self._row(
-            "Taille", self.width_spin, cross, self.height_spin,
-            self.lock_ratio, reset_dims))
+        custom_layout = QHBoxLayout()
+        custom_layout.setContentsMargins(12, 0, 0, 0)
+        custom_layout.setSpacing(6)
+        custom_layout.addWidget(self.width_spin, 1)
+        custom_layout.addWidget(cross, 0)
+        custom_layout.addWidget(self.height_spin, 1)
+        custom_layout.addWidget(self.lock_ratio, 0)
+        self.custom_dims = QWidget()
+        self.custom_dims.setLayout(custom_layout)
+        self.custom_dims.setVisible(False)
+        settings.add(self.custom_dims)
 
         self.angle_combo = QComboBox()
         for label, value in ANGLES:
@@ -445,7 +346,7 @@ class ImagePage(QWidget):
                                       self.quality_value))
         column.addWidget(settings)
 
-        output = widgets.Card(padding=14, spacing=8)
+        output = widgets.Card(padding=12, spacing=8)
         output.body().addWidget(widgets.SectionLabel("Sortie et conversion"))
         self.output_edit = QLineEdit()
         self.output_edit.setPlaceholderText("chemin du fichier à créer")
@@ -454,7 +355,7 @@ class ImagePage(QWidget):
 
         output_row = QHBoxLayout()
         output_row.setSpacing(8)
-        self.browse_output = _small_ghost("Choisir…", "folder")
+        self.browse_output = widgets.small_ghost("Choisir…", "folder")
         self.browse_output.clicked.connect(self._browse_output)
         output_row.addWidget(self.browse_output)
         output_row.addStretch(1)
@@ -476,7 +377,7 @@ class ImagePage(QWidget):
         weights.addWidget(self.after_label)
         weights.addStretch(1)
         output.add_layout(weights)
-        self.compare_bars = CompareBars()
+        self.compare_bars = widgets.CompareBars()
         output.add(self.compare_bars)
 
         self.convert_button = widgets.NeonButton("Convertir l'image",
@@ -497,7 +398,7 @@ class ImagePage(QWidget):
         column.addWidget(output)
 
         column.addStretch(1)
-        return column
+        return widgets.scroll_column(content)
 
     def _row(self, caption, *widgets_):
         """Rangée compacte « intitulé + champs »."""
@@ -505,10 +406,14 @@ class ImagePage(QWidget):
         row.setSpacing(6)
         label = QLabel(caption.upper())
         label.setObjectName("SectionLabel")
-        label.setFixedWidth(78)
+        label.setFixedWidth(70)
         row.addWidget(label)
         for widget in widgets_:
             if isinstance(widget, (QSpinBox, QComboBox, QSlider)):
+                if isinstance(widget, QComboBox):
+                    widget.setSizePolicy(QSizePolicy.Policy.Ignored,
+                                         QSizePolicy.Policy.Fixed)
+                    widget.setMinimumWidth(88)
                 row.addWidget(widget, 1)
             else:
                 row.addWidget(widget, 0)
@@ -517,10 +422,11 @@ class ImagePage(QWidget):
     # -- état -----------------------------------------------------------
     def _settings(self):
         flip_h, flip_v = MIRRORS[self.mirror_combo.currentIndex()][1]
+        width, height = self._target_size()
+        if self._size_mode() == "original":
+            width = height = None
         return engine.ImageSettings(
-            crop=self._crop,
-            width=None if self._auto_dims else self.width_spin.value(),
-            height=None if self._auto_dims else self.height_spin.value(),
+            crop=self._crop, width=width, height=height,
             angle=float(self.angle_combo.currentData() or 0),
             flip_h=flip_h, flip_v=flip_v,
             quality=self.quality_slider.value())
@@ -538,43 +444,81 @@ class ImagePage(QWidget):
             width, height = height, width
         return width, height
 
+    def _size_mode(self):
+        data = self.size_combo.currentData()
+        if data == CUSTOM_SIZE:
+            return "custom"
+        if data is None:
+            return "original"
+        return "preset"
+
+    def _target_size(self):
+        """Dimensions effectives de sortie selon le mode choisi."""
+        mode = self._size_mode()
+        if mode == "custom":
+            return self.width_spin.value(), self.height_spin.value()
+        base_width, base_height = self._output_size()
+        if mode == "preset":
+            box_width, box_height = self.size_combo.currentData()
+            scale = min(box_width / base_width, box_height / base_height)
+            return (max(1, round(base_width * scale)),
+                    max(1, round(base_height * scale)))
+        return base_width, base_height
+
+    def _update_size_result(self):
+        if not self._info:
+            self.size_result.setText("—")
+            return
+        width, height = self._target_size()
+        self.size_result.setText("%d×%d px" % (width, height))
+        self._last_target = (width, height)
+
     def _sync_dims(self):
         width, height = self._output_size()
         self._loading_spins = True
         self.width_spin.setValue(width)
         self.height_spin.setValue(height)
         self._loading_spins = False
-        self._auto_dims = True
+        self._update_size_result()
+
+    def _size_mode_changed(self, _index):
+        mode = self._size_mode()
+        self.custom_dims.setVisible(mode == "custom")
+        if mode == "custom":
+            width, height = getattr(self, "_last_target",
+                                    self._output_size())
+            self._loading_spins = True
+            self.width_spin.setValue(width)
+            self.height_spin.setValue(height)
+            self._loading_spins = False
+        self._update_size_result()
+        self._refresh_controls()
+        self._settings_changed()
 
     def _width_changed(self, value):
         if self._loading_spins or not self._info:
             return
-        self._auto_dims = False
         if self.lock_ratio.isChecked():
             width, height = self._output_size()
             self._loading_spins = True
             self.height_spin.setValue(max(1, round(value * height / width)))
             self._loading_spins = False
+        self._update_size_result()
         self._settings_changed()
 
     def _height_changed(self, value):
         if self._loading_spins or not self._info:
             return
-        self._auto_dims = False
         if self.lock_ratio.isChecked():
             width, height = self._output_size()
             self._loading_spins = True
             self.width_spin.setValue(max(1, round(value * width / height)))
             self._loading_spins = False
-        self._settings_changed()
-
-    def _reset_dims(self):
-        self._sync_dims()
+        self._update_size_result()
         self._settings_changed()
 
     def _rotation_changed(self, _index):
-        if self._auto_dims:
-            self._sync_dims()
+        self._update_size_result()
         self._settings_changed()
 
     def _quality_changed(self, value):
@@ -611,9 +555,11 @@ class ImagePage(QWidget):
             else "sans perte")
         self.crop_button.setEnabled(has_source and not busy)
         self.crop_clear.setEnabled(has_source and not busy and self._crop is not None)
+        custom = has_source and not busy and self._size_mode() == "custom"
         for spin in (self.width_spin, self.height_spin):
-            spin.setEnabled(has_source and not busy)
-        self.lock_ratio.setEnabled(has_source and not busy)
+            spin.setEnabled(custom)
+        self.lock_ratio.setEnabled(custom)
+        self.size_combo.setEnabled(has_source and not busy)
         self.angle_combo.setEnabled(has_source and not busy)
         self.mirror_combo.setEnabled(has_source and not busy)
         self.browse_output.setEnabled(not busy)
@@ -692,6 +638,10 @@ class ImagePage(QWidget):
         self.mirror_combo.blockSignals(True)
         self.mirror_combo.setCurrentIndex(0)
         self.mirror_combo.blockSignals(False)
+        self.size_combo.blockSignals(True)
+        self.size_combo.setCurrentIndex(0)
+        self.size_combo.blockSignals(False)
+        self.custom_dims.setVisible(False)
         self._sync_dims()
 
         guessed = formats.guess_format(info.path)
@@ -769,8 +719,7 @@ class ImagePage(QWidget):
         if dialog.exec():
             self._crop = dialog.result_crop
             self._update_crop_label()
-            if self._auto_dims:
-                self._sync_dims()
+            self._update_size_result()
             self._settings_changed()
 
     def _clear_crop(self):
@@ -778,8 +727,7 @@ class ImagePage(QWidget):
             return
         self._crop = None
         self._update_crop_label()
-        if self._auto_dims:
-            self._sync_dims()
+        self._update_size_result()
         self._settings_changed()
 
     def _update_crop_label(self):

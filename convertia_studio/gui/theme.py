@@ -191,8 +191,8 @@ QComboBox {
     background: %(bg_alt)s;
     border: 1px solid %(line)s;
     border-radius: 10px;
-    padding: 8px 12px;
-    min-width: 96px;
+    padding: 8px 10px;
+    min-width: 56px;
 }
 QComboBox:hover {
     border: 1px solid #2A3A58;
@@ -224,7 +224,7 @@ QSpinBox, QDoubleSpinBox {
     border: 1px solid %(line)s;
     border-radius: 9px;
     padding: 6px 8px;
-    min-width: 62px;
+    min-width: 48px;
     selection-background-color: %(cyan)s;
     selection-color: #04070E;
 }

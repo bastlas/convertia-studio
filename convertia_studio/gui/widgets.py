@@ -7,7 +7,8 @@ from PySide6.QtCore import (Property, QEasingCurve, QEvent, QPointF, QPropertyAn
 from PySide6.QtGui import (QBrush, QColor, QFont, QIcon, QPainter, QPainterPath, QPen,
                            QPixmap, QRadialGradient)
 from PySide6.QtWidgets import (QAbstractButton, QFrame, QGraphicsDropShadowEffect, QLabel,
-                               QPushButton, QSizePolicy, QTextEdit, QVBoxLayout, QWidget)
+                               QPushButton, QScrollArea, QSizePolicy, QTextEdit,
+                               QVBoxLayout, QWidget)
 
 from . import theme
 
@@ -945,3 +946,188 @@ def elide(text, limit=64):
     if len(text) <= limit:
         return text
     return text[: limit - 1] + "…"
+
+
+def scroll_column(content):
+    """Enveloppe une colonne de réglages dans une zone défilante transparente."""
+    area = QScrollArea()
+    area.setObjectName("SettingsScroll")
+    area.setWidgetResizable(True)
+    area.setFrameShape(QFrame.Shape.NoFrame)
+    area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    content.setObjectName("SettingsContent")
+    content.setAutoFillBackground(False)
+    area.setWidget(content)
+    area.viewport().setObjectName("SettingsViewport")
+    area.viewport().setAutoFillBackground(False)
+    area.viewport().setStyleSheet(
+        "QWidget#SettingsViewport { background: transparent; }")
+    content.setStyleSheet(
+        "QWidget#SettingsContent { background: transparent; }")
+    area.setStyleSheet(
+        "QScrollArea#SettingsScroll { background: transparent; border: none; }")
+    return area
+
+
+def human_size(size):
+    """Taille lisible façon française (« 2,4 Mio »)."""
+    size = float(size)
+    if size < 1024:
+        return "%d o" % round(size)
+    for unit in ("Kio", "Mio", "Gio"):
+        size /= 1024.0
+        if size < 1024 or unit == "Gio":
+            text = "%.1f" % size if size < 100 else "%.0f" % size
+            return "%s %s" % (text.replace(".", ","), unit)
+    return ("%.1f Gio" % size).replace(".", ",")
+
+
+def small_ghost(text, icon_kind=None):
+    """Bouton secondaire compact pour les rangées de réglages."""
+    button = GhostButton(text, icon_kind=icon_kind)
+    button.setFixedHeight(28)
+    button.setFont(theme.ui_font(11, QFont.Weight.Medium))
+    return button
+
+
+# --------------------------------------------------------------------------
+# Aperçu d'image et comparaison de poids (partagés)
+# --------------------------------------------------------------------------
+
+
+class PreviewPane(QWidget):
+    """Aperçu de l'image, damier derrière la transparence."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumHeight(150)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding,
+                           QSizePolicy.Policy.Expanding)
+        self._pixmap = QPixmap()
+        self._caption = ""
+        self._empty = "Déposez une image pour voir l'aperçu."
+        self._checker = None
+
+    def set_pixmap(self, pixmap, caption):
+        self._pixmap = pixmap
+        self._caption = caption
+        self.update()
+
+    def set_empty(self, text):
+        self._pixmap = QPixmap()
+        self._caption = ""
+        self._empty = text
+        self.update()
+
+    def _checker_brush(self):
+        if self._checker is None:
+            tile = QPixmap(20, 20)
+            tile.fill(QColor("#0B111D"))
+            painter = QPainter(tile)
+            painter.fillRect(0, 0, 10, 10, QColor("#101A2B"))
+            painter.fillRect(10, 10, 10, 10, QColor("#101A2B"))
+            painter.end()
+            self._checker = QBrush(tile)
+        return self._checker
+
+    def paintEvent(self, _event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        outer = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        painter.setBrush(QColor(theme.COLORS["bg_alt"]))
+        painter.setPen(QPen(QColor(theme.COLORS["line_soft"]), 1))
+        painter.drawRoundedRect(outer, 12, 12)
+
+        if self._pixmap.isNull():
+            painter.setPen(QColor(theme.COLORS["text_faint"]))
+            painter.setFont(theme.ui_font(12))
+            painter.drawText(outer.adjusted(18, 18, -18, -18),
+                             Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
+                             self._empty)
+            return
+
+        available = outer.adjusted(10, 10, -10, -10)
+        size = self._pixmap.size()
+        scale = min(available.width() / size.width(),
+                    available.height() / size.height())
+        width = size.width() * scale
+        height = size.height() * scale
+        target = QRectF(available.x() + (available.width() - width) / 2,
+                        available.y() + (available.height() - height) / 2,
+                        width, height)
+        painter.setClipRect(target)
+        painter.fillRect(target, self._checker_brush())
+        painter.setClipRect(outer)
+        painter.drawPixmap(target, self._pixmap, QRectF(self._pixmap.rect()))
+
+        if self._caption:
+            painter.setFont(theme.mono_font(10))
+            metrics = painter.fontMetrics()
+            box_width = metrics.horizontalAdvance(self._caption) + 16
+            box = QRectF(target.left() + 8, target.top() + 8, box_width, 20)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(5, 7, 14, 205))
+            painter.drawRoundedRect(box, 6, 6)
+            painter.setPen(QColor(theme.COLORS["cyan"]))
+            painter.drawText(box, Qt.AlignmentFlag.AlignCenter, self._caption)
+
+
+class CompareBars(QWidget):
+    """Deux barres proportionnelles : poids avant / poids estimé."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(50)
+        self._before = 0
+        self._after = None
+        self._approximate = False
+
+    def set_sizes(self, before, after, approximate=False):
+        self._before = before or 0
+        self._after = after
+        self._approximate = approximate
+        self.update()
+
+    def paintEvent(self, _event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setFont(theme.ui_font(10, QFont.Weight.DemiBold))
+        label_width = 44
+        value_width = 66
+        bar_width = max(20, self.width() - label_width - value_width - 10)
+        maximum = max(self._before, self._after or 0, 1)
+        rows = (("AVANT", self._before, QColor(theme.COLORS["text_faint"])),
+                ("APRÈS", self._after,
+                 QColor(theme.COLORS["green"] if
+                       (self._after is None or self._after <= self._before)
+                       else theme.COLORS["red"])))
+        painter.setPen(Qt.PenStyle.NoPen)
+        for index, (label, value, colour) in enumerate(rows):
+            y = 4 + index * 23
+            painter.setPen(QColor(theme.COLORS["text_faint"] if index == 0
+                                  else theme.COLORS["text_dim"]))
+            painter.drawText(QRectF(0, y, label_width, 16),
+                             Qt.AlignmentFlag.AlignVCenter, label)
+            track = QRectF(label_width, y + 3, bar_width, 10)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(theme.COLORS["line_soft"]))
+            painter.drawRoundedRect(track, 5, 5)
+            if value:
+                width = max(6.0, bar_width * value / maximum)
+                if value is self._after and index == 1:
+                    colour = QColor(colour)
+                    colour.setAlpha(230)
+                painter.setBrush(colour)
+                painter.drawRoundedRect(QRectF(track.x(), track.y(), width,
+                                               track.height()), 5, 5)
+            painter.setFont(theme.mono_font(10))
+            painter.setPen(QColor(theme.COLORS["text_dim"]))
+            text = "calcul…" if (index == 1 and value is None) else (
+                ("≈ " if self._approximate else "") + human_size(value)
+                if value else "—")
+            painter.drawText(QRectF(label_width + bar_width + 8, y - 1,
+                                    value_width, 16),
+                             Qt.AlignmentFlag.AlignVCenter |
+                             Qt.AlignmentFlag.AlignRight, text)
+            painter.setFont(theme.ui_font(10, QFont.Weight.DemiBold))

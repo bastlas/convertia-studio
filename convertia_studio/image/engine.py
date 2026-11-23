@@ -385,6 +385,7 @@ def preview(path, settings, max_side=PREVIEW_MAX_SIDE, format_key=None):
     """
     loaded = load(path)
     image = apply_transform(loaded.image, settings)
+    output_width, output_height = image.size
     if max(image.size) > max_side:
         image = image.copy()
         image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
@@ -393,12 +394,12 @@ def preview(path, settings, max_side=PREVIEW_MAX_SIDE, format_key=None):
         if format_key in PREVIEW_ENCODED_FORMATS:
             try:
                 data = encode(image, format_key, settings.quality)
-                return data, image.width, image.height, loaded.warnings
+                return data, output_width, output_height, loaded.warnings
             except ImageError:
                 pass
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
-    return buffer.getvalue(), image.width, image.height, loaded.warnings
+    return buffer.getvalue(), output_width, output_height, loaded.warnings
 
 
 def estimate(path, settings, format_key):
