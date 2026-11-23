@@ -1,6 +1,6 @@
 # Journal des versions
 
-## 2.2.0 — 23 novembre 2026
+## 2.1.2 — 23 novembre 2026
 
 Section **Vidéo** complète, et nouveau sélecteur de taille pour l'image :
 

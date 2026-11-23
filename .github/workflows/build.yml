@@ -56,6 +56,13 @@ jobs:
           python build/make_icon.py
           python -m PyInstaller --noconfirm --clean build/convertia_studio.spec
 
+      - name: ffmpeg à côté de l'exécutable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/ConvertiaStudio/bin | Out-Null
+          Copy-Item bin/ffmpeg.exe, bin/ffprobe.exe dist/ConvertiaStudio/bin/
+          Get-ChildItem dist/ConvertiaStudio/bin | Format-Table Name, Length
+
       - name: Test de démarrage de l'exécutable
         shell: pwsh
         run: |
