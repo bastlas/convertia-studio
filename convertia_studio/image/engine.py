@@ -81,6 +81,19 @@ def is_image(path):
     return formats.is_supported(os.fspath(path) if path else "")
 
 
+def output_supported(key):
+    """Vrai si Pillow sait réellement encoder ce format."""
+    try:
+        from PIL import features
+    except ImportError:  # pragma: no cover - Pillow est une dépendance dure
+        return False
+    if key == "avif":
+        return bool(features.check("avif"))
+    if key == "webp":
+        return bool(features.check("webp"))
+    return True
+
+
 def human_size(size):
     """Taille lisible façon française (« 2,4 Mio »)."""
     size = float(size)
@@ -91,7 +104,7 @@ def human_size(size):
         if size < 1024 or unit == "Gio":
             text = "%.1f" % size if size < 100 else "%.0f" % size
             return "%s %s" % (text.replace(".", ","), unit)
-    return "%.1f Gio" % size
+    return ("%.1f Gio" % size).replace(".", ",")
 
 
 _MODE_LABELS = {
@@ -463,7 +476,7 @@ def delta_label(before, after):
         return "≈ 0 %"
     sign = "−" if ratio <= 1 else "+"
     if change < 10:
-        return "%s%.1f %%" % (sign, change)
+        return ("%s%.1f %%" % (sign, change)).replace(".", ",")
     return "%s%d %%" % (sign, round(change))
 
 

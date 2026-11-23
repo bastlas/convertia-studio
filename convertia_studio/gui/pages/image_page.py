@@ -359,6 +359,10 @@ class ImagePage(QWidget):
             card = widgets.FormatCard(image_format)
             card.setMinimumHeight(80)
             card.setMaximumHeight(80)
+            if not engine.output_supported(image_format.key):
+                card.setEnabled(False)
+                card.setToolTip("%s n'est pas disponible avec cette version de "
+                                "Pillow." % image_format.label)
             card.setChecked(image_format.key == self._format_key)
             card.clicked.connect(
                 lambda _checked=False, key=image_format.key: self.set_format(key))
@@ -691,6 +695,8 @@ class ImagePage(QWidget):
         self._sync_dims()
 
         guessed = formats.guess_format(info.path)
+        if guessed and not engine.output_supported(guessed):
+            guessed = None
         self._format_key = ""
         self.set_format(guessed or "jpeg")
 
@@ -923,12 +929,20 @@ class ImagePage(QWidget):
             self._set_note("Le fichier de sortie ne peut pas être la source.",
                            theme.COLORS["red"])
             return
-        if os.path.exists(destination):
-            self._set_note("%s existe déjà : il sera remplacé."
-                           % os.path.basename(destination),
-                           theme.COLORS["amber"])
-
         image_format = formats.get_format(self._format_key)
+        warnings = []
+        if os.path.exists(destination):
+            warnings.append("%s existe déjà : il sera remplacé."
+                            % os.path.basename(destination))
+        accepted = {image_format.extension}
+        if image_format.key == "jpeg":
+            accepted.add(".jpeg")
+        if image_format.key == "tiff":
+            accepted.add(".tif")
+        extension = os.path.splitext(destination)[1].lower()
+        if extension and extension not in accepted:
+            warnings.append("extension %s inattendue : le fichier contiendra du "
+                            "%s." % (extension, image_format.label))
         self._busy = True
         self.progress.set_indeterminate(False)
         self.progress.set_value(0)
@@ -941,7 +955,12 @@ class ImagePage(QWidget):
         self._convert_worker.done.connect(self._on_finished)
         self._convert_worker.failed.connect(self._on_failed)
         self._convert_worker.start()
-        self._set_note("Encodage %s…" % image_format.label)
+        if warnings:
+            self._set_note("Encodage %s… · %s"
+                           % (image_format.label, " · ".join(warnings)),
+                           theme.COLORS["amber"])
+        else:
+            self._set_note("Encodage %s…" % image_format.label)
 
     def _on_progress(self, fraction, message):
         self.progress.set_value(fraction)

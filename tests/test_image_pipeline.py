@@ -52,6 +52,18 @@ class TestFormats(unittest.TestCase):
         self.assertEqual(engine.human_size(1536), "1,5 Kio")
         self.assertEqual(engine.human_size(3 * 1024 * 1024), "3,0 Mio")
 
+    def test_delta_label(self):
+        self.assertEqual(engine.delta_label(1000, 250), "−75 %")
+        self.assertEqual(engine.delta_label(1000, 1250), "+25 %")
+        self.assertEqual(engine.delta_label(1000, 1000), "≈ 0 %")
+        self.assertEqual(engine.delta_label(1000, 970), "−3,0 %")
+        self.assertEqual(engine.delta_label(1000, None), "—")
+
+    def test_formats_disponibles(self):
+        self.assertTrue(engine.output_supported("png"))
+        self.assertEqual(engine.output_supported("avif"), _feature("avif"))
+        self.assertEqual(engine.output_supported("webp"), _feature("webp"))
+
 
 class TestDescribe(unittest.TestCase):
     def setUp(self):
@@ -223,6 +235,17 @@ class TestEncodage(unittest.TestCase):
                         .endswith("photo-converti.png"))
         self.assertTrue(engine.default_output_path(source, "jpeg")
                         .endswith("photo.jpg"))
+
+    def test_apercu_encode_dans_le_format(self):
+        source = make_image(self.path("source.png"), size=(300, 200))
+        low, width, height, _ = engine.preview(
+            source, engine.ImageSettings(quality=15), format_key="jpeg")
+        high, _w, _h, _ = engine.preview(
+            source, engine.ImageSettings(quality=95), format_key="jpeg")
+        self.assertTrue(low.startswith(b"\xff\xd8"))
+        self.assertTrue(high.startswith(b"\xff\xd8"))
+        self.assertLess(len(low), len(high))
+        self.assertEqual((width, height), (300, 200))
 
     def test_meme_chemin_refuse(self):
         source = make_image(self.path("source.png"))

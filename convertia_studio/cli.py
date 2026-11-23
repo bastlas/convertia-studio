@@ -166,6 +166,10 @@ def _convert_image(args):
               % format_key, file=sys.stderr)
         return 2
     image_format = image_formats.get_format(format_key)
+    if not image_engine.output_supported(format_key):
+        print("erreur : %s n'est pas disponible avec cette version de Pillow"
+              % image_format.label, file=sys.stderr)
+        return 2
 
     try:
         crop = _parse_crop(args.crop)
