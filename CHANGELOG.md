@@ -1,5 +1,12 @@
 # Journal des versions
 
+## 2.1.1 — 23 novembre 2026
+
+- L'aperçu reflète la compression : il est encodé dans le format cible (JPEG,
+  WebP ou PNG) avec la qualité choisie, ce qui montre les artefacts quand le
+  curseur descend.
+- L'en-tête de l'aperçu rappelle le format et la qualité simulés.
+
 ## 2.1.0 — 23 novembre 2026
 
 Section **Image** complète :

@@ -357,12 +357,18 @@ def render(path, settings, format_key, quality=None, icc_profile=None):
     return data, image.width, image.height, loaded.warnings
 
 
-def preview(path, settings, max_side=PREVIEW_MAX_SIDE, format_key=None):
-    """Petit PNG (sans perte) pour l'aperçu graphique.
+#: Formats dont l'aperçu est encodé tel quel (Qt sait les relire).
+PREVIEW_ENCODED_FORMATS = ("jpeg", "webp", "png")
 
-    ``format_key`` permet de simuler l'aplatissement de la transparence d'un
-    format qui ne la gère pas (JPEG, BMP).  Retourne ``(octets, largeur,
-    hauteur, avertissements)``.
+
+def preview(path, settings, max_side=PREVIEW_MAX_SIDE, format_key=None):
+    """Aperçu graphique de la transformation.
+
+    L'aperçu est encodé dans le format cible (JPEG, WebP ou PNG) afin de
+    montrer les artefacts de compression quand la qualité baisse ; pour les
+    autres formats, un PNG sans perte est utilisé.  ``format_key`` sert aussi
+    à simuler l'aplatissement de la transparence.  Retourne ``(octets,
+    largeur, hauteur, avertissements)``.
     """
     loaded = load(path)
     image = apply_transform(loaded.image, settings)
@@ -371,6 +377,12 @@ def preview(path, settings, max_side=PREVIEW_MAX_SIDE, format_key=None):
         image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
     if format_key:
         image = _prepare_for_format(image, formats.get_format(format_key))
+        if format_key in PREVIEW_ENCODED_FORMATS:
+            try:
+                data = encode(image, format_key, settings.quality)
+                return data, image.width, image.height, loaded.warnings
+            except ImageError:
+                pass
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return buffer.getvalue(), image.width, image.height, loaded.warnings

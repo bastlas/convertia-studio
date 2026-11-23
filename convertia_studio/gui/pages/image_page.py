@@ -816,9 +816,14 @@ class ImagePage(QWidget):
             return
         pixmap = QPixmap()
         if pixmap.loadFromData(data):
+            image_format = formats.get_format(self._format_key)
+            quality = (" · %d %%" % self.quality_slider.value()
+                       if image_format.supports_quality else "")
             self._after_pixmap = pixmap
             self._show_before = False
-            self.preview_dims.setText("%d × %d px" % (width, height))
+            self.preview_dims.setText("%d × %d px · %s%s"
+                                      % (width, height, image_format.label,
+                                         quality))
             self._update_preview_view()
             self.compare_toggle.setEnabled(True)
 
