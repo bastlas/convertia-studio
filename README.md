@@ -31,12 +31,36 @@ Windows peut afficher un avertissement SmartScreen, l'exécutable n'étant pas
 signé : *Informations complémentaires* → *Exécuter quand même*. Les empreintes
 SHA-256 sont fournies dans `SHA256SUMS.txt` à côté de l'archive.
 
+## Télécharger (Linux)
+
+L'archive `ConvertiaStudio-linux.tar.gz` des
+[**Releases GitHub**](../../releases/latest) contient un lanceur :
+
+```bash
+tar xzf ConvertiaStudio-linux.tar.gz
+./ConvertiaStudio/ConvertiaStudio.sh
+```
+
+Au premier lancement, `ConvertiaStudio.sh` vérifie les bibliothèques Qt
+(xcb-cursor, xcb-icccm, xkbcommon-x11, OpenGL/EGL, fontconfig, dbus…). Si des
+paquets manquent, il détecte la distribution et propose de les installer avec
+`apt`, `dnf`, `pacman` ou `zypper` (mot de passe demandé via `sudo` ou
+`pkexec`), puis démarre l'application.
+
+- `./ConvertiaStudio.sh --check` : diagnostic seul, sans installation ;
+- `CONVERTIA_NO_INSTALL=1 ./ConvertiaStudio.sh` : ne rien installer ;
+- si la distribution est trop ancienne (glibc), un message l'indique.
+
+L'exécutable `ConvertiaStudio` peut aussi être lancé directement lorsque les
+dépendances sont déjà présentes.
+
 ## Démarrage rapide
 
 | Plateforme | Lancement |
 | --- | --- |
 | Windows | `ConvertiaStudio.exe` (archive `ConvertiaStudio-win64.zip` des Releases) |
-| Linux / macOS | `python3 convertia_studio.pyw` |
+| Linux (archive) | `./ConvertiaStudio.sh` (archive `ConvertiaStudio-linux.tar.gz`) |
+| Linux / macOS (sources) | `python3 convertia_studio.pyw` |
 | Ligne de commande | `python3 -m convertia_studio --help` |
 
 Ce qui est nécessaire :
@@ -274,6 +298,7 @@ correcte entre 0,5× et 2×).
 | `convertia_studio.pyw` | lanceur (fenêtre, ou `--cli` pour la console) |
 | `tests/` | tests unitaires + générateur de projets Audacity de test |
 | `build/` | recettes PyInstaller, icône, scripts de compilation |
+| `build/linux/launcher.sh` | lanceur Linux (dépendances Qt et démarrage) |
 | `scripts/publish_github.sh` | création du dépôt distant et envoi du code |
 | `.github/workflows/build.yml` | compilation automatique (Windows + Linux) |
 | `dist/` | application compilée (générée) |
@@ -338,6 +363,8 @@ WAV/AIFF et la conversion complète.
 | Message | Cause / solution |
 | --- | --- |
 | « ffmpeg introuvable ou inutilisable » | installer ffmpeg (paquet `ffmpeg`), ou placer un binaire valide dans `bin/` ; un binaire embarqué cassé est ignoré automatiquement |
+| L'application ne démarre pas sous Linux | lancer `./ConvertiaStudio.sh` : il détecte et propose d'installer les bibliothèques Qt manquantes (`--check` pour un diagnostic) |
+| « GLIBC_… not found » | distribution trop ancienne pour le binaire : utiliser une version récente d'Ubuntu/Debian/Fedora ou demander une compilation adaptée |
 | « journal WAL détecté » | le projet est ouvert dans Audacity ; enregistrer puis fermer pour un instantané stable |
 | « document principal vide : lecture de la sauvegarde automatique » | projet jamais enregistré (`.aup4unsaved`) |
 | « bloc audio absent de la base » | projet incomplet ou corrompu : le passage devient silencieux |

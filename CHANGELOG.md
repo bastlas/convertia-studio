@@ -1,5 +1,19 @@
 # Journal des versions
 
+## 2.2.1 — 24 novembre 2026
+
+- **Lanceur Linux `ConvertiaStudio.sh`** : vérifie les bibliothèques Qt
+  (xcb-cursor, xcb-icccm, xkbcommon-x11, OpenGL/EGL, fontconfig, dbus…),
+  détecte la distribution et propose d'installer les paquets manquants avec
+  apt, dnf, pacman ou zypper (sudo, ou pkexec en session graphique), puis
+  démarre l'application.
+- `./ConvertiaStudio.sh --check` diagnostique sans rien installer ;
+  `CONVERTIA_NO_INSTALL=1` désactive l'installation automatique.
+- Message explicite si la distribution est trop ancienne (glibc).
+- L'archive Linux est désormais compilée sur Ubuntu 22.04 (glibc plus
+  ancienne) pour démarrer sur davantage de distributions.
+- Le lanceur est inclus dans l'archive et documenté dans le README.
+
 ## 2.2.0 — 23 novembre 2026
 
 Traitement d'un **dossier entier** :

@@ -118,7 +118,9 @@ jobs:
 
   linux:
     name: Linux (ConvertiaStudio-linux.tar.gz)
-    runs-on: ubuntu-latest
+    # 22.04 garde une glibc plus ancienne : le binaire démarre sur davantage
+    # de distributions que s'il était compilé sur la dernière Ubuntu.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -126,7 +128,11 @@ jobs:
           python-version: "3.12"
       - name: Dépendances
         run: |
-          sudo apt-get update && sudo apt-get install -y ffmpeg libegl1 libgl1 libxkbcommon0 libxcb-cursor0
+          sudo apt-get update && sudo apt-get install -y ffmpeg \
+            libegl1 libgl1 libxkbcommon0 libxcb-cursor0 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 \
+            libfontconfig1 libdbus-1-3
           python -m pip install --upgrade pip
           python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6" "Pillow>=11"
       - name: Compilation
@@ -150,6 +156,12 @@ jobs:
           else
             echo "::warning::archive ffmpeg statique indisponible ; ffmpeg système requis"
           fi
+
+      - name: Lanceur Linux et dépendances
+        run: |
+          cp build/linux/launcher.sh dist/ConvertiaStudio/ConvertiaStudio.sh
+          chmod +x dist/ConvertiaStudio/ConvertiaStudio.sh
+          CONVERTIA_NO_INSTALL=1 ./dist/ConvertiaStudio/ConvertiaStudio.sh --check
 
       - name: Test de conversion vidéo
         run: |

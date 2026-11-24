@@ -14,6 +14,8 @@ python3 -m PyInstaller --noconfirm --clean build/convertia_studio.spec
 # ffmpeg du PATH ; les archives de release embarquent un binaire statique
 # (voir .github/workflows/build.yml).
 
+cp "${ROOT}/build/linux/launcher.sh" "${ROOT}/dist/ConvertiaStudio/ConvertiaStudio.sh"
+chmod +x "${ROOT}/dist/ConvertiaStudio/ConvertiaStudio.sh"
 cp "${ROOT}/README.md" "${ROOT}/dist/ConvertiaStudio/LISEZ-MOI.md" 2>/dev/null || true
 cp -r "${ROOT}/docs" "${ROOT}/dist/ConvertiaStudio/docs" 2>/dev/null || true
 
