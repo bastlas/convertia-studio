@@ -45,6 +45,10 @@ class TestFormats(unittest.TestCase):
         self.assertEqual(formats.guess_format("photo.webp"), "webp")
         self.assertIsNone(formats.guess_format("photo.xyz"))
         self.assertTrue(formats.is_supported("a.PNG"))
+        self.assertTrue(formats.is_supported("a.heic"))
+        self.assertTrue(formats.is_supported("a.raw"))
+        self.assertTrue(engine.is_raw("a.dng"))
+        self.assertFalse(engine.is_raw("a.jpg"))
         self.assertFalse(formats.is_supported("a.aup4"))
 
     def test_human_size(self):
@@ -235,6 +239,45 @@ class TestEncodage(unittest.TestCase):
                         .endswith("photo-converti.png"))
         self.assertTrue(engine.default_output_path(source, "jpeg")
                         .endswith("photo.jpg"))
+
+    def test_heic_entree_sortie(self):
+        if not engine.output_supported("heic"):
+            self.skipTest("pillow-heif absent")
+        source = make_image(self.path("source.png"), size=(320, 200))
+        destination = self.path("sortie.heic")
+        result = engine.convert(source, destination, "heic",
+                                engine.ImageSettings(width=160, height=100,
+                                                     quality=80))
+        self.assertTrue(os.path.isfile(destination))
+        info = engine.describe(destination)
+        self.assertEqual(info.format_name, "HEIC")
+        self.assertEqual((info.width, info.height), (160, 100))
+        loaded = engine.load(destination)
+        self.assertEqual(loaded.image.size, (160, 100))
+        data, width, height, _ = engine.preview(
+            destination, engine.ImageSettings(), format_key="jpeg")
+        self.assertEqual((width, height), (160, 100))
+        self.assertTrue(data.startswith(b"\xff\xd8"))
+
+    def test_heic_transparence(self):
+        if not engine.output_supported("heic"):
+            self.skipTest("pillow-heif absent")
+        image = Image.new("RGBA", (40, 30), (10, 20, 30, 128))
+        data = engine.encode(image, "heic", 80)
+        from io import BytesIO
+
+        with Image.open(BytesIO(data)) as decoded:
+            self.assertEqual(decoded.mode, "RGBA")
+
+    def test_raw_invalide(self):
+        if engine.rawpy is None:
+            self.skipTest("rawpy absent")
+        fake = self.path("faux.raw")
+        with open(fake, "wb") as handle:
+            handle.write(b"pas un raw")
+        with self.assertRaises(engine.ImageError) as context:
+            engine.describe(fake)
+        self.assertIn("RAW", str(context.exception))
 
     def test_apercu_encode_dans_le_format(self):
         source = make_image(self.path("source.png"), size=(300, 200))

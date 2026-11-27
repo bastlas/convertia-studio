@@ -266,8 +266,8 @@ class VideoPage(QWidget):
                 lambda _checked=False, key=video_format.key: self.set_format(key))
             self._format_group.addButton(card)
             self._format_cards[video_format.key] = card
-            grid.addWidget(card, index // 2, index % 2)
-        for col in range(2):
+            grid.addWidget(card, index // 3, index % 3)
+        for col in range(3):
             grid.setColumnStretch(col, 1)
         column.addWidget(grid_host, 0)
 

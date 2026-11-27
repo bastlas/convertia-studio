@@ -453,7 +453,7 @@ def build_command(info, dest, format_key, settings):
         if abs(float(settings.speed_factor or 1.0) - 1.0) > 1e-6:
             command += ["-filter:a", _tempo_chain(settings.speed_factor)]
 
-    if fmt.container == "mp4":
+    if fmt.container in ("mp4", "mov"):
         command += ["-movflags", "+faststart"]
     command += ["-f", fmt.container, "-progress", "pipe:1", "-nostats", dest]
     return command

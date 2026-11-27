@@ -17,6 +17,20 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from . import formats
 
+try:  # HEIC / HEIF (photos Apple)
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+    HEIF_AVAILABLE = True
+except Exception:  # noqa: BLE001 - dépendance facultative
+    pillow_heif = None
+    HEIF_AVAILABLE = False
+
+try:  # RAW d'appareil photo (CR2, NEF, ARW, DNG, RAW…)
+    import rawpy
+except Exception:  # noqa: BLE001 - dépendance facultative
+    rawpy = None
+
 #: Limite de sécurité pour les aperçus (bords les plus longs).
 PREVIEW_MAX_SIDE = 1600
 
@@ -81,8 +95,15 @@ def is_image(path):
     return formats.is_supported(os.fspath(path) if path else "")
 
 
+def is_raw(path):
+    """Vrai si l'extension correspond à un fichier RAW d'appareil photo."""
+    return os.path.splitext(os.fspath(path))[1].lower() in formats.RAW_SUFFIXES
+
+
 def output_supported(key):
     """Vrai si Pillow sait réellement encoder ce format."""
+    if key == "heic":
+        return HEIF_AVAILABLE
     try:
         from PIL import features
     except ImportError:  # pragma: no cover - Pillow est une dépendance dure
@@ -137,6 +158,8 @@ def describe(path):
     path = os.fspath(path)
     if not os.path.isfile(path):
         raise ImageError("fichier introuvable : %s" % path)
+    if is_raw(path):
+        return _describe_raw(path)
     try:
         with Image.open(path) as image:
             format_name = formats.label_for_pillow(image.format)
@@ -154,6 +177,10 @@ def describe(path):
             dpi = image.info.get("dpi")
             icc = bool(image.info.get("icc_profile"))
     except UnidentifiedImageError as error:
+        extension = os.path.splitext(path)[1].lower()
+        if extension in (".heic", ".heif") and not HEIF_AVAILABLE:
+            raise ImageError("HEIC/HEIF non pris en charge : la bibliothèque "
+                             "pillow-heif est absente.") from error
         raise ImageError("format d'image non reconnu : %s"
                          % os.path.basename(path)) from error
     except OSError as error:
@@ -194,6 +221,31 @@ def describe(path):
         warnings=warnings)
 
 
+def _describe_raw(path):
+    if rawpy is None:
+        raise ImageError("décodage RAW indisponible : la bibliothèque rawpy "
+                         "est absente.")
+    try:
+        with rawpy.imread(path) as raw:
+            sizes = raw.sizes
+            width, height, flip = sizes.width, sizes.height, sizes.flip
+    except Exception as error:  # noqa: BLE001 - erreur LibRaw
+        raise ImageError("impossible de lire ce fichier RAW : %s" % error) from error
+    if flip in (5, 6):
+        width, height = height, width
+    size = os.path.getsize(path)
+    details = [
+        "RAW · %d × %d px · %s" % (width, height, human_size(size)),
+        "Décodage LibRaw · balance des blancs de l'appareil",
+    ]
+    warnings = ["fichier RAW : les réglages de l'appareil sont appliqués au "
+                "décodage (les effets de l'appareil ne sont pas modifiables)"]
+    return ImageInfo(path=path, width=width, height=height, mode="RGB",
+                     format_name="RAW", size=size, has_alpha=False,
+                     frames=1, orientation=1, details=details,
+                     warnings=warnings)
+
+
 @dataclass
 class LoadedImage:
     """Image décodée prête à être transformée."""
@@ -204,11 +256,35 @@ class LoadedImage:
     warnings: list = field(default_factory=list)
 
 
+def _load_raw(path):
+    if rawpy is None:
+        raise ImageError("décodage RAW indisponible : la bibliothèque rawpy "
+                         "est absente.")
+    try:
+        with rawpy.imread(path) as raw:
+            pixels = raw.postprocess(use_camera_wb=True, output_bps=8,
+                                     no_auto_bright=False)
+    except Exception as error:  # noqa: BLE001 - erreur LibRaw
+        raise ImageError("décodage RAW impossible : %s" % error) from error
+    image = Image.fromarray(pixels)
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+    return LoadedImage(
+        image=image, icc_profile=None, frames=1,
+        warnings=["fichier RAW décodé par LibRaw (réglages de l'appareil)"])
+
+
 def load(path):
     """Décode l'image, applique l'orientation EXIF et normalise le mode."""
+    if is_raw(path):
+        return _load_raw(path)
     try:
         source = Image.open(path)
     except UnidentifiedImageError as error:
+        extension = os.path.splitext(path)[1].lower()
+        if extension in (".heic", ".heif") and not HEIF_AVAILABLE:
+            raise ImageError("HEIC/HEIF non pris en charge : la bibliothèque "
+                             "pillow-heif est absente.") from error
         raise ImageError("format d'image non reconnu : %s"
                          % os.path.basename(path)) from error
     except OSError as error:
@@ -344,13 +420,16 @@ def encode(image, format_key, quality=85, icc_profile=None,
                       progressive=True)
     elif image_format.key == "webp":
         params.update(quality=max(1, min(100, int(quality))), method=4)
+    elif image_format.key == "heic":
+        params.update(quality=max(1, min(100, int(quality))))
     elif image_format.key == "avif":
         params.update(quality=max(1, min(100, int(quality))))
     elif image_format.key == "png":
         params.update(optimize=True)
     elif image_format.key == "tiff":
         params.update(compression="tiff_deflate")
-    if icc_profile and image_format.key in ("jpeg", "png", "webp", "avif"):
+    if icc_profile and image_format.key in ("jpeg", "png", "webp", "avif",
+                                            "heic"):
         params["icc_profile"] = icc_profile
     try:
         prepared.save(buffer, format=image_format.pillow_format, **params)

@@ -1,5 +1,18 @@
 # Journal des versions
 
+## 2.3.0 — 27 novembre 2026
+
+- **Vidéo** : nouveau format de sortie **MOV** (QuickTime, H.264 + AAC),
+  pratique pour Apple et les logiciels de montage.
+- **Image** : lecture et écriture **HEIC/HEIF** (photos Apple) via
+  `pillow-heif`, avec transparence et qualité réglable.
+- **Image** : lecture des **RAW d'appareil photo** (`.raw`, `.dng`, `.cr2`,
+  `.cr3`, `.nef`, `.arw`, `.orf`, `.rw2`, `.raf`, `.srw`, `.pef`, `.kdc`…)
+  via `rawpy`/LibRaw, avec balance des blancs de l'appareil.
+- Grille des formats d'image passée à quatre colonnes pour accueillir HEIC.
+- Dépendances `pillow-heif` et `rawpy` ajoutées aux compilations Windows et
+  Linux ; tests HEIC/RAW/MOV et conversions de contrôle dans la CI.
+
 ## 2.2.1 — 24 novembre 2026
 
 - **Lanceur Linux `ConvertiaStudio.sh`** : vérifie les bibliothèques Qt

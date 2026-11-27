@@ -56,8 +56,9 @@ class VideoTestCase(unittest.TestCase):
         self.assertTrue(info.size > 1000)
 
     def test_formats(self):
-        self.assertEqual(len(formats.FORMAT_KEYS), 4)
-        self.assertEqual(formats.guess_format("film.MOV"), "mp4")
+        self.assertEqual(len(formats.FORMAT_KEYS), 5)
+        self.assertIn("mov", formats.FORMAT_KEYS)
+        self.assertEqual(formats.guess_format("film.MOV"), "mov")
         self.assertTrue(formats.is_supported_input("a.mkv"))
         self.assertFalse(formats.is_supported_input("a.png"))
         self.assertTrue(engine.format_supported("mp4"))
@@ -120,6 +121,17 @@ class VideoTestCase(unittest.TestCase):
         output = engine.describe(destination)
         self.assertEqual((output.width, output.height), (160, 120))
         self.assertAlmostEqual(output.duration, 1.0, delta=0.4)
+        self.assertTrue(output.has_audio)
+
+    def test_conversion_mov(self):
+        destination = self.path("sortie.mov")
+        settings = engine.VideoSettings(crf=28, speed="fast", width=160,
+                                        height=120, start=0.5, end=1.5)
+        result = engine.convert(self.sample, destination, "mov", settings)
+        self.assertTrue(os.path.isfile(destination))
+        output = engine.describe(destination)
+        self.assertEqual((output.width, output.height), (160, 120))
+        self.assertEqual(output.container, "MOV")
         self.assertTrue(output.has_audio)
 
     def test_conversion_sans_audio(self):

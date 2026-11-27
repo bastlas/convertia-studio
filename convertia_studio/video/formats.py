@@ -46,6 +46,15 @@ FORMATS = (
         default_audio_bitrate="192k",
         audio_copy_codecs=("aac", "mp3", "ac3", "eac3", "alac")),
     VideoFormat(
+        key="mov", label="MOV · H.264", extension=".mov", container="mov",
+        video_codec="libx264", audio_codec="aac",
+        description="QuickTime, compatible Apple et logiciels de montage.",
+        badge="APPLE", family="lossy", default_crf=23,
+        crf_min=16, crf_max=34,
+        audio_bitrates=("96k", "128k", "192k", "256k", "320k"),
+        default_audio_bitrate="192k",
+        audio_copy_codecs=("aac", "mp3", "ac3", "eac3", "alac")),
+    VideoFormat(
         key="webm", label="WebM · VP9", extension=".webm", container="webm",
         video_codec="libvpx-vp9", audio_codec="libopus",
         description="Ouvert et léger, idéal pour le web et les logiciels libres.",
@@ -73,7 +82,7 @@ for _fmt in FORMATS:
     # défaut d'une extension seule.
     _BY_EXTENSION.setdefault(_fmt.extension, _fmt)
 _BY_EXTENSION[".m4v"] = _BY_KEY["mp4"]
-_BY_EXTENSION[".mov"] = _BY_KEY["mp4"]
+_BY_EXTENSION[".mov"] = _BY_KEY["mov"]
 _BY_EXTENSION[".mka"] = _BY_KEY["mkv"]
 
 #: Extensions reconnues comme vidéo (le flux vidéo est vérifié ensuite).

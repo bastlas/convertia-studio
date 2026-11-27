@@ -20,8 +20,9 @@ from ..worker import (ImageConvertWorker, ImageDescribeWorker,
                       ImageEstimateWorker, ImagePreviewWorker)
 
 FILE_FILTER = (
-    "Images (*.png *.jpg *.jpeg *.jpe *.jfif *.webp *.avif *.tif *.tiff "
-    "*.bmp *.gif *.ico);;Tous les fichiers (*)"
+    "Images (*.png *.jpg *.jpeg *.jpe *.jfif *.webp *.heic *.heif *.avif "
+    "*.tif *.tiff *.bmp *.gif *.ico *.raw *.dng *.cr2 *.cr3 *.nef *.arw "
+    "*.orf *.rw2 *.raf *.srw *.pef *.kdc);;Tous les fichiers (*)"
 )
 
 MIRRORS = (("Aucun", (False, False)), ("Horizontal", (True, False)),
@@ -241,8 +242,8 @@ class ImagePage(QWidget):
                 lambda _checked=False, key=image_format.key: self.set_format(key))
             self._format_group.addButton(card)
             self._format_cards[image_format.key] = card
-            grid.addWidget(card, index // 3, index % 3)
-        for col in range(3):
+            grid.addWidget(card, index // 4, index % 4)
+        for col in range(4):
             grid.setColumnStretch(col, 1)
         column.addWidget(grid_host, 0)
 
@@ -748,13 +749,13 @@ class ImagePage(QWidget):
             self.crop_label.setText("—")
             return
         if not self._crop:
-            self.crop_label.setText("Toute l'image")
+            self.crop_label.setText("Aucune")
             self.crop_label.setToolTip(
                 "Aucun recadrage · %d × %d px" % (self._info.width,
                                                  self._info.height))
         else:
             x, y, width, height = self._crop
-            self.crop_label.setText("%d × %d px" % (width, height))
+            self.crop_label.setText("%d × %d" % (width, height))
             self.crop_label.setToolTip(
                 "Sélection %d × %d px à partir de x %d, y %d"
                 % (width, height, x, y))

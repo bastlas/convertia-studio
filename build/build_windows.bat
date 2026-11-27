@@ -7,7 +7,7 @@ if not exist ".venv" python -m venv .venv
 call .venv\Scripts\activate
 
 python -m pip install --upgrade pip
-python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6" "Pillow>=11"
+python -m pip install "pyinstaller>=6.10" "numpy>=1.26" "PySide6>=6.6" "Pillow>=11" "pillow-heif>=0.18" "rawpy>=0.21"
 
 if not exist "bin" mkdir bin
 if exist "C:\ffmpeg\bin\ffmpeg.exe" copy /Y "C:\ffmpeg\bin\ffmpeg.exe" bin\ >nul

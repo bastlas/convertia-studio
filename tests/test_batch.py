@@ -40,6 +40,8 @@ class TestBatchScan(unittest.TestCase):
         self.assertEqual(batch.classify("a.PNG"), "image")
         self.assertEqual(batch.classify("a.mkv"), "video")
         self.assertEqual(batch.classify("a.wav"), "audio")
+        self.assertEqual(batch.classify("a.heic"), "image")
+        self.assertEqual(batch.classify("a.dng"), "image")
         self.assertEqual(batch.classify("projet.aup4"), "audio")
         self.assertIsNone(batch.classify("a.txt"))
 

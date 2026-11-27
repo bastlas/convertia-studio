@@ -38,6 +38,11 @@ FORMATS = (
         family="lossy", badge="WEB", supports_quality=True,
         supports_alpha=True, pillow_format="WEBP", default_quality=80),
     ImageFormat(
+        key="heic", label="HEIC", extension=".heic",
+        description="Photo Apple compacte, transparence et qualité réglable.",
+        family="lossy", badge="APPLE", supports_quality=True,
+        supports_alpha=True, pillow_format="HEIF", default_quality=80),
+    ImageFormat(
         key="avif", label="AVIF", extension=".avif",
         description="Le plus compact à qualité égale (encodage plus lent).",
         family="lossy", badge="NEXT", supports_quality=True,
@@ -67,11 +72,19 @@ for _fmt in FORMATS:
 _BY_EXTENSION[".jpeg"] = _BY_KEY["jpeg"]
 _BY_EXTENSION[".tif"] = _BY_KEY["tiff"]
 
+#: Fichiers RAW d'appareil photo (décodés par LibRaw / rawpy).
+RAW_SUFFIXES = (
+    ".raw", ".dng", ".cr2", ".cr3", ".nef", ".arw", ".orf", ".rw2",
+    ".raf", ".srw", ".pef", ".rwl", ".3fr", ".erf", ".kdc", ".mrw",
+    ".x3f", ".sr2", ".srf",
+)
+
 #: Extensions acceptées en entrée (Pillow en décode au moins le premier cadre).
 INPUT_SUFFIXES = (
     ".png", ".jpg", ".jpeg", ".jpe", ".jfif", ".webp", ".avif",
-    ".tif", ".tiff", ".bmp", ".gif", ".ico", ".tga", ".ppm", ".pgm",
-)
+    ".heic", ".heif", ".tif", ".tiff", ".bmp", ".gif", ".ico",
+    ".tga", ".ppm", ".pgm",
+) + RAW_SUFFIXES
 
 
 def get_format(key):
@@ -100,4 +113,5 @@ def label_for_pillow(name):
     """Nom lisible d'un format Pillow (« JPEG » pour ``JPEG``)."""
     return {
         "MPO": "JPEG", "JPG": "JPEG", "MPEG": "MPEG",
+        "HEIF": "HEIC", "HEIC": "HEIC",
     }.get((name or "").upper(), (name or "?").upper()[:8])

@@ -4,11 +4,11 @@ Application de conversion de médias, avec interface graphique moderne et ligne
 de commande. Côté **audio**, elle convertit les **projets Audacity** (`.aup3`,
 `.aup4`, y compris les fichiers `*unsaved`) et **n'importe quel fichier audio**
 vers neuf formats de sortie — sans lancer Audacity. Côté **image**, elle
-recadre, redimensionne, pivote et compresse les images (PNG, JPEG, WebP, AVIF,
-TIFF, BMP) avec aperçu et comparaison du poids avant / après. Côté **vidéo**,
+recadre, redimensionne, pivote et compresse les images (PNG, JPEG, WebP,
+HEIC, AVIF, TIFF, BMP, RAW) avec aperçu et comparaison du poids avant / après. Côté **vidéo**,
 elle découpe, redimensionne, change la cadence, la vitesse et l'audio, puis
-compresse en MP4 (H.264 / H.265), WebM (VP9) ou MKV, avec vignette de contrôle
-et poids estimé.
+compresse en MP4 (H.264 / H.265), MOV, WebM (VP9) ou MKV, avec vignette de
+contrôle et poids estimé.
 
 ![Aperçu de la page Audio](docs/apercu-audio.png)
 
@@ -25,8 +25,8 @@ Les versions prêtes à l'emploi sont publiées dans les
 2. décompresser l'archive où tu veux (le dossier `ConvertiaStudio/`) ;
 3. double-cliquer sur `ConvertiaStudio.exe`.
 
-Rien à installer : Python, Qt, Pillow, ffmpeg et ffprobe sont inclus dans
-l'archive.
+Rien à installer : Python, Qt, Pillow, pillow-heif, rawpy, ffmpeg et ffprobe
+sont inclus dans l'archive.
 Windows peut afficher un avertissement SmartScreen, l'exécutable n'étant pas
 signé : *Informations complémentaires* → *Exécuter quand même*. Les empreintes
 SHA-256 sont fournies dans `SHA256SUMS.txt` à côté de l'archive.
@@ -67,7 +67,8 @@ Ce qui est nécessaire :
 
 - Python 3.10+ et `numpy` ;
 - `PySide6` pour l'interface graphique ;
-- `Pillow` pour le traitement d'images ;
+- `Pillow` pour le traitement d'images, `pillow-heif` pour HEIC/HEIF et
+  `rawpy` pour les fichiers RAW ;
 - `ffmpeg` pour les formats audio compressés (MP3, MP4, Opus…), les vidéos et
   l'analyse des médias. Sous Windows et dans l'archive Linux, des binaires
   autonomes sont livrés dans `bin/` à côté de l'exécutable ; à défaut, le
@@ -100,14 +101,18 @@ et un mixage mono.
 
 ### Image
 
-**En entrée** : PNG, JPEG, WebP, AVIF, TIFF, BMP, GIF, ICO (et la plupart des
-formats lus par Pillow). L'orientation EXIF est appliquée à l'ouverture ; seule
-la première image d'un GIF ou d'un WebP animé est conservée.
+**En entrée** : PNG, JPEG, WebP, HEIC/HEIF, AVIF, TIFF, BMP, GIF, ICO, ainsi
+que les RAW d'appareil photo (`.raw`, `.dng`, `.cr2`, `.cr3`, `.nef`, `.arw`,
+`.orf`, `.rw2`, `.raf`, `.srw`, `.pef`, `.kdc`…). L'orientation EXIF est
+appliquée à l'ouverture ; seule la première image d'un GIF ou d'un WebP animé
+est conservée. Les RAW sont décodés par LibRaw avec la balance des blancs de
+l'appareil.
 
 | Format | Extension | Type | Réglages |
 | --- | --- | --- | --- |
 | JPEG | `.jpg` | compressé | qualité 1 → 100 |
 | WebP | `.webp` | compressé | qualité, transparence |
+| HEIC | `.heic` | compressé | qualité, transparence (Apple) |
 | AVIF | `.avif` | compressé | qualité (encodage plus lent) |
 | PNG | `.png` | sans perte | transparence, optimisation |
 | TIFF | `.tiff` | sans perte | compression deflate |
@@ -134,6 +139,7 @@ traité comme de l'audio.
 | --- | --- | --- | --- |
 | MP4 · H.264 | `.mp4` | H.264 + AAC | CRF, cadence, résolution, audio |
 | MP4 · H.265 | `.mp4` | H.265 + AAC | plus compact, liseurs récents |
+| MOV · H.264 | `.mov` | H.264 + AAC | QuickTime, Apple et montage |
 | WebM · VP9 | `.webm` | VP9 + Opus | ouvert, idéal pour le web |
 | MKV · H.264 | `.mkv` | H.264 + AAC | conteneur souple |
 
@@ -246,7 +252,9 @@ Pour un projet Audacity, l'outil reproduit ce que contient le fichier :
   (JPEG, BMP) ;
 - les métadonnées EXIF (appareil, date…) ne sont pas recopiées ;
 - GIF et WebP animés : seule la première image est convertie ;
-- images de plus de 8 bits par canal ramenées à 8 bits.
+- images de plus de 8 bits par canal ramenées à 8 bits ;
+- HEIC/HEIF en entrée comme en sortie ; les RAW en entrée seulement (le format
+  de sortie est choisi parmi les formats classiques).
 
 ## Traitement des vidéos
 

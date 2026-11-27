@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
 python3 -m pip install --quiet --upgrade "pyinstaller>=6.10" "numpy>=1.26" \
-    "PySide6>=6.6" "Pillow>=11"
+    "PySide6>=6.6" "Pillow>=11" "pillow-heif>=0.18" "rawpy>=0.21"
 python3 build/make_icon.py
 python3 -m PyInstaller --noconfirm --clean build/convertia_studio.spec
 
